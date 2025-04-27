@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Budget Comparison</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js Datalabels Plugin CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+  <style>
+    .chart-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    canvas {
+      width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">
+      Current vs. Projected Monthly Budget (Wesley Chapel, FL)
+    </h1>
+    <div class="chart-container bg-white shadow-lg rounded-lg">
+      <canvas id="budgetChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    // Register the datalabels plugin
+    Chart.register(ChartDataLabels);
+
+    // Get the canvas element
+    const ctx = document.getElementById('budgetChart').getContext('2d');
+
+    // Create the bar chart
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Income', 'Expenses', 'Surplus'],
+        datasets: [
+          {
+            label: 'Current Budget',
+            data: [6000, 4045, 1955],
+            backgroundColor: 'rgba(54, 162, 235, 0.8)', // Blue
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+          },
+          {
+            label: 'Projected Budget',
+            data: [6400, 5247, 1153],
+            backgroundColor: 'rgba(255, 159, 64, 0.8)', // Orange
+            borderColor: 'rgba(255, 159, 64, 1)',
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              font: {
+                size: 14
+              }
+            }
+          },
+          title: {
+            display: true,
+            text: 'Current vs. Projected Monthly Budget (Wesley Chapel, FL)',
+            font: {
+              size: 18
+            },
+            padding: {
+              bottom: 20
+            }
+          },
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            formatter: (value) => `$${value.toLocaleString()}`,
+            font: {
+              weight: 'bold',
+              size: 12
+            },
+            color: '#333'
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 7000,
+            title: {
+              display: true,
+              text: 'Amount ($)',
+              font: {
+                size: 14
+              }
+            },
+            ticks: {
+              callback: function(value) {
+                return `$${value.toLocaleString()}`;
+              }
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Categories',
+              font: {
+                size: 14
+              }
+            }
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
