@@ -12,19 +12,27 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
   <style>
     .chart-container {
-      max-width: 800px;
+      max-width: 100%;
       margin: 0 auto;
-      padding: 20px;
+      padding: 16px;
     }
     canvas {
       width: 100% !important;
-      height: auto !important;
+      height: 400px !important; /* Default height */
+    }
+    @media (max-width: 640px) {
+      .chart-container {
+        padding: 8px;
+      }
+      canvas {
+        height: 300px !important; /* Smaller height for mobile */
+      }
     }
   </style>
 </head>
 <body class="bg-gray-100">
-  <div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">
+  <div class="container mx-auto px-4 py-6 sm:py-8">
+    <h1 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-4 sm:mb-6">
       Budget Comparison: Knoxville vs. Florida
     </h1>
     <div class="chart-container bg-white shadow-lg rounded-lg">
@@ -63,12 +71,13 @@
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: {
             position: 'top',
             labels: {
               font: {
-                size: 14
+                size: window.innerWidth < 640 ? 12 : 14
               }
             }
           },
@@ -76,10 +85,10 @@
             display: true,
             text: 'Budget Comparison: Knoxville vs. Florida',
             font: {
-              size: 18
+              size: window.innerWidth < 640 ? 16 : 18
             },
             padding: {
-              bottom: 20
+              bottom: window.innerWidth < 640 ? 10 : 20
             }
           },
           datalabels: {
@@ -88,9 +97,10 @@
             formatter: (value) => `$${value.toLocaleString()}`,
             font: {
               weight: 'bold',
-              size: 12
+              size: window.innerWidth < 640 ? 10 : 12
             },
-            color: '#333'
+            color: '#333',
+            rotation: window.innerWidth < 640 ? -45 : 0 // Rotate labels on mobile
           }
         },
         scales: {
@@ -101,12 +111,16 @@
               display: true,
               text: 'Amount ($)',
               font: {
-                size: 14
+                size: window.innerWidth < 640 ? 12 : 14
               }
             },
             ticks: {
               callback: function(value) {
                 return `$${value.toLocaleString()}`;
+              },
+              maxTicksLimit: window.innerWidth < 640 ? 6 : 8,
+              font: {
+                size: window.innerWidth < 640 ? 10 : 12
               }
             }
           },
@@ -115,9 +129,20 @@
               display: true,
               text: 'Categories',
               font: {
-                size: 14
+                size: window.innerWidth < 640 ? 12 : 14
+              }
+            },
+            ticks: {
+              font: {
+                size: window.innerWidth < 640 ? 10 : 12
               }
             }
+          }
+        },
+        layout: {
+          padding: {
+            top: window.innerWidth < 640 ? 40 : 20,
+            bottom: window.innerWidth < 640 ? 10 : 20
           }
         }
       }
