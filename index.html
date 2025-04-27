@@ -74,7 +74,7 @@
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            position: 'top',
+            position: window.innerWidth < 640 ? 'bottom' : 'top',
             labels: {
               font: {
                 size: window.innerWidth < 640 ? 12 : 14
@@ -88,25 +88,26 @@
               size: window.innerWidth < 640 ? 16 : 18
             },
             padding: {
-              bottom: window.innerWidth < 640 ? 10 : 20
+              bottom: window.innerWidth < 640 ? 20 : 30
             }
           },
           datalabels: {
             anchor: 'end',
             align: 'top',
+            offset: window.innerWidth < 640 ? 10 : 12,
             formatter: (value) => `$${value.toLocaleString()}`,
             font: {
               weight: 'bold',
               size: window.innerWidth < 640 ? 10 : 12
             },
             color: '#333',
-            rotation: window.innerWidth < 640 ? -45 : 0 // Rotate labels on mobile
+            rotation: window.innerWidth < 640 ? -45 : 0
           }
         },
         scales: {
           y: {
             beginAtZero: true,
-            max: 12000,
+            max: 18000,
             title: {
               display: true,
               text: 'Amount ($)',
@@ -118,7 +119,7 @@
               callback: function(value) {
                 return `$${value.toLocaleString()}`;
               },
-              maxTicksLimit: window.innerWidth < 640 ? 6 : 8,
+              maxTicksLimit: window.innerWidth < 640 ? 7 : 8,
               font: {
                 size: window.innerWidth < 640 ? 10 : 12
               }
@@ -141,7 +142,7 @@
         },
         layout: {
           padding: {
-            top: window.innerWidth < 640 ? 40 : 20,
+            top: window.innerWidth < 640 ? 80 : 60,
             bottom: window.innerWidth < 640 ? 10 : 20
           }
         }
