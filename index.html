@@ -38,6 +38,67 @@
     <div class="chart-container bg-white shadow-lg rounded-lg">
       <canvas id="budgetChart"></canvas>
     </div>
+    <div class="mt-6 bg-white shadow-lg rounded-lg p-6">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Edit Florida Expenses</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="mortgage" class="block text-sm font-medium text-gray-700">Mortgage</label>
+          <input type="number" id="mortgage" value="2600" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="tesla1" class="block text-sm font-medium text-gray-700">Tesla (1)</label>
+          <input type="number" id="tesla1" value="490" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="tesla2" class="block text-sm font-medium text-gray-700">Tesla (2)</label>
+          <input type="number" id="tesla2" value="415" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="sands" class="block text-sm font-medium text-gray-700">S&S</label>
+          <input type="number" id="sands" value="400" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="carInsurance" class="block text-sm font-medium text-gray-700">Car Insurance</label>
+          <input type="number" id="carInsurance" value="350" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="electric" class="block text-sm font-medium text-gray-700">Kub - Electric</label>
+          <input type="number" id="electric" value="250" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="phone" class="block text-sm font-medium text-gray-700">Phone</label>
+          <input type="number" id="phone" value="150" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="water" class="block text-sm font-medium text-gray-700">Water</label>
+          <input type="number" id="water" value="150" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="insurance" class="block text-sm font-medium text-gray-700">Insurance</label>
+          <input type="number" id="insurance" value="90" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="odie" class="block text-sm font-medium text-gray-700">Odie</label>
+          <input type="number" id="odie" value="80" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="internet" class="block text-sm font-medium text-gray-700">Internet</label>
+          <input type="number" id="internet" value="65" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="tucker" class="block text-sm font-medium text-gray-700">Tucker</label>
+          <input type="number" id="tucker" value="45" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="amazon" class="block text-sm font-medium text-gray-700">Amazon</label>
+          <input type="number" id="amazon" value="20" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="netflix" class="block text-sm font-medium text-gray-700">Netflix</label>
+          <input type="number" id="netflix" value="20" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -47,8 +108,37 @@
     // Get the canvas element
     const ctx = document.getElementById('budgetChart').getContext('2d');
 
+    // Expense input IDs in sorted order (highest to lowest)
+    const expenseInputs = [
+      'mortgage', 'tesla1', 'tesla2', 'sands', 'carInsurance', 'electric', 'phone',
+      'water', 'insurance', 'odie', 'internet', 'tucker', 'amazon', 'netflix'
+    ];
+
+    // Initial Florida expenses
+    const floridaExpenses = {
+      mortgage: 2600,
+      tesla1: 490,
+      tesla2: 415,
+      sands: 400,
+      carInsurance: 350,
+      electric: 250,
+      phone: 150,
+      water: 150,
+      insurance: 90,
+      odie: 80,
+      internet: 65,
+      tucker: 45,
+      amazon: 20,
+      netflix: 20
+    };
+
+    // Calculate initial Florida bills and surplus
+    let floridaBills = Object.values(floridaExpenses).reduce((sum, val) => sum + val, 0);
+    const income = 11000;
+    let floridaSurplus = income - floridaBills;
+
     // Create the bar chart
-    new Chart(ctx, {
+    const chart = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: ['Income', 'Bills', 'Surplus'],
@@ -62,7 +152,7 @@
           },
           {
             label: 'Florida (Projected)',
-            data: [11000, 4825, 6175],
+            data: [11000, floridaBills, floridaSurplus],
             backgroundColor: 'rgba(255, 159, 64, 0.8)', // Orange
             borderColor: 'rgba(255, 159, 64, 1)',
             borderWidth: 1
@@ -147,6 +237,18 @@
           }
         }
       }
+    });
+
+    // Add event listeners to inputs
+    expenseInputs.forEach(id => {
+      const input = document.getElementById(id);
+      input.addEventListener('input', () => {
+        floridaExpenses[id] = parseFloat(input.value) || 0;
+        floridaBills = Object.values(floridaExpenses).reduce((sum, val) => sum + val, 0);
+        floridaSurplus = income - floridaBills;
+        chart.data.datasets[1].data = [income, floridaBills, floridaSurplus];
+        chart.update();
+      });
     });
   </script>
 </body>
