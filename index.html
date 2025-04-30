@@ -49,9 +49,9 @@
       </div>
     </div>
     <div class="mb-6 bg-white shadow-lg rounded-lg p-6">
-      <h2 class="text-xl font-semibold text-gray-800 text-center">
+      <h3 class="text-base text-gray-600 text-center">
         Minimum Combined Annual Income (Zero Surplus) - Knoxville: <span id="knoxvilleMinIncome">$0</span> | Florida: <span id="floridaMinIncome">$0</span>
-      </h2>
+      </h3>
       <h3 class="text-base text-gray-600 text-center mt-2">
         Current Combined Annual Income: <span id="currentCombinedIncome">$0</span>
       </h3>
@@ -441,7 +441,7 @@
       document.getElementById('knoxvilleMinIncome').textContent = `$${calculateMinAnnualIncome(knoxvilleBills).toLocaleString()}`;
       document.getElementById('floridaMinIncome').textContent = `$${calculateMinAnnualIncome(floridaBills).toLocaleString()}`;
       // Update current combined income display
-      document.getElementById('currentCombinedIncome').textContent = `$${ (yourIncome + wifeIncome).toLocaleString() }`;
+      document.getElementById('currentCombinedIncome').textContent = `$${(yourIncome + wifeIncome).toLocaleString()}`;
     }
 
     // Render custom expenses for a specific location
