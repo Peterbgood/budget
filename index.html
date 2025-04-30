@@ -35,6 +35,19 @@
     <h1 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-4 sm:mb-6">
       Budget Comparison: Knoxville vs. Florida
     </h1>
+    <div class="mb-6 bg-white shadow-lg rounded-lg p-6">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Income</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="yourIncome" class="block text-sm font-medium text-gray-700">Your Annual Income</label>
+          <input type="number" id="yourIncome" value="87000" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="wifeIncome" class="block text-sm font-medium text-gray-700">Wife's Annual Income</label>
+          <input type="number" id="wifeIncome" value="95000" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+      </div>
+    </div>
     <div class="chart-container bg-white shadow-lg rounded-lg">
       <canvas id="budgetChart"></canvas>
     </div>
@@ -42,64 +55,137 @@
       <h2 class="text-xl font-semibold text-gray-800 mb-4">Edit Florida Expenses</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label for="mortgage" class="block text-sm font-medium text-gray-700">Mortgage</label>
-          <input type="number" id="mortgage" value="2600" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaMortgage" class="block text-sm font-medium text-gray-700">Mortgage</label>
+          <input type="number" id="floridaMortgage" value="2600" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="tesla1" class="block text-sm font-medium text-gray-700">Tesla (1)</label>
-          <input type="number" id="tesla1" value="490" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaTesla1" class="block text-sm font-medium text-gray-700">Tesla (1)</label>
+          <input type="number" id="floridaTesla1" value="490" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="tesla2" class="block text-sm font-medium text-gray-700">Tesla (2)</label>
-          <input type="number" id="tesla2" value="415" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaTesla2" class="block text-sm font-medium text-gray-700">Tesla (2)</label>
+          <input type="number" id="floridaTesla2" value="415" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="sands" class="block text-sm font-medium text-gray-700">S&S</label>
-          <input type="number" id="sands" value="400" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaSands" class="block text-sm font-medium text-gray-700">S&S</label>
+          <input type="number" id="floridaSands" value="400" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="carInsurance" class="block text-sm font-medium text-gray-700">Car Insurance</label>
-          <input type="number" id="carInsurance" value="350" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaCarInsurance" class="block text-sm font-medium text-gray-700">Car Insurance</label>
+          <input type="number" id="floridaCarInsurance" value="350" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="electric" class="block text-sm font-medium text-gray-700">Kub - Electric</label>
-          <input type="number" id="electric" value="250" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaElectric" class="block text-sm font-medium text-gray-700">Kub - Electric</label>
+          <input type="number" id="floridaElectric" value="250" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="phone" class="block text-sm font-medium text-gray-700">Phone</label>
-          <input type="number" id="phone" value="150" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaPhone" class="block text-sm font-medium text-gray-700">Phone</label>
+          <input type="number" id="floridaPhone" value="150" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="water" class="block text-sm font-medium text-gray-700">Water</label>
-          <input type="number" id="water" value="150" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaWater" class="block text-sm font-medium text-gray-700">Water</label>
+          <input type="number" id="floridaWater" value="150" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="insurance" class="block text-sm font-medium text-gray-700">Insurance</label>
-          <input type="number" id="insurance" value="90" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaInsurance" class="block text-sm font-medium text-gray-700">Insurance</label>
+          <input type="number" id="floridaInsurance" value="90" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="internet" class="block text-sm font-medium text-gray-700">Internet</label>
-          <input type="number" id="internet" value="65" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaInternet" class="block text-sm font-medium text-gray-700">Internet</label>
+          <input type="number" id="floridaInternet" value="65" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="tucker" class="block text-sm font-medium text-gray-700">Tucker</label>
-          <input type="number" id="tucker" value="45" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaTucker" class="block text-sm font-medium text-gray-700">Tucker</label>
+          <input type="number" id="floridaTucker" value="45" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="odie" class="block text-sm font-medium text-gray-700">Odie</label>
-          <input type="number" id="odie" value="30" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaOdie" class="block text-sm font-medium text-gray-700">Odie</label>
+          <input type="number" id="floridaOdie" value="30" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="amazon" class="block text-sm font-medium text-gray-700">Amazon</label>
-          <input type="number" id="amazon" value="20" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaAmazon" class="block text-sm font-medium text-gray-700">Amazon</label>
+          <input type="number" id="floridaAmazon" value="20" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="netflix" class="block text-sm font-medium text-gray-700">Netflix</label>
-          <input type="number" id="netflix" value="20" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaNetflix" class="block text-sm font-medium text-gray-700">Netflix</label>
+          <input type="number" id="floridaNetflix" value="20" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
-          <label for="max" class="block text-sm font-medium text-gray-700">Max</label>
-          <input type="number" id="max" value="20" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <label for="floridaMax" class="block text-sm font-medium text-gray-700">Max</label>
+          <input type="number" id="floridaMax" value="20" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="floridaSling" class="block text-sm font-medium text-gray-700">Sling TV</label>
+          <input type="number" id="floridaSling" value="40" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+      </div>
+    </div>
+    <div class="mt-6 bg-white shadow-lg rounded-lg p-6">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Edit Knoxville Expenses</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="knoxvilleMortgage" class="block text-sm font-medium text-gray-700">Mortgage</label>
+          <input type="number" id="knoxvilleMortgage" value="1585" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleTesla1" class="block text-sm font-medium text-gray-700">Tesla (1)</label>
+          <input type="number" id="knoxvilleTesla1" value="490" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleTesla2" class="block text-sm font-medium text-gray-700">Tesla (2)</label>
+          <input type="number" id="knoxvilleTesla2" value="415" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleSands" class="block text-sm font-medium text-gray-700">S&S</label>
+          <input type="number" id="knoxvilleSands" value="400" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleCarInsurance" class="block text-sm font-medium text-gray-700">Car Insurance</label>
+          <input type="number" id="knoxvilleCarInsurance" value="202" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleElectric" class="block text-sm font-medium text-gray-700">Kub - Electric</label>
+          <input type="number" id="knoxvilleElectric" value="250" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvillePhone" class="block text-sm font-medium text-gray-700">Phone</label>
+          <input type="number" id="knoxvillePhone" value="150" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleWater" class="block text-sm font-medium text-gray-700">Water</label>
+          <input type="number" id="knoxvilleWater" value="150" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleInsurance" class="block text-sm font-medium text-gray-700">Insurance</label>
+          <input type="number" id="knoxvilleInsurance" value="90" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleInternet" class="block text-sm font-medium text-gray-700">Internet</label>
+          <input type="number" id="knoxvilleInternet" value="65" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleTucker" class="block text-sm font-medium text-gray-700">Tucker</label>
+          <input type="number" id="knoxvilleTucker" value="45" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleOdie" class="block text-sm font-medium text-gray-700">Odie</label>
+          <input type="number" id="knoxvilleOdie" value="30" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleAmazon" class="block text-sm font-medium text-gray-700">Amazon</label>
+          <input type="number" id="knoxvilleAmazon" value="20" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleNetflix" class="block text-sm font-medium text-gray-700">Netflix</label>
+          <input type="number" id="knoxvilleNetflix" value="20" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleMax" class="block text-sm font-medium text-gray-700">Max</label>
+          <input type="number" id="knoxvilleMax" value="20" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="knoxvilleSling" class="block text-sm font-medium text-gray-700">Sling TV</label>
+          <input type="number" id="knoxvilleSling" value="40" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
       </div>
     </div>
@@ -112,10 +198,10 @@
     // Get the canvas element
     const ctx = document.getElementById('budgetChart').getContext('2d');
 
-    // Expense input IDs in sorted order (highest to lowest)
-    const expenseInputs = [
+    // Expense input IDs
+    const expenseKeys = [
       'mortgage', 'tesla1', 'tesla2', 'sands', 'carInsurance', 'electric', 'phone',
-      'water', 'insurance', 'internet', 'tucker', 'odie', 'amazon', 'netflix', 'max'
+      'water', 'insurance', 'internet', 'tucker', 'odie', 'amazon', 'netflix', 'max', 'sling'
     ];
 
     // Initial Florida expenses
@@ -134,13 +220,47 @@
       odie: 30,
       amazon: 20,
       netflix: 20,
-      max: 20
+      max: 20,
+      sling: 40
     };
 
-    // Calculate initial Florida bills and surplus
+    // Initial Knoxville expenses
+    const knoxvilleExpenses = {
+      mortgage: 1585,
+      tesla1: 490,
+      tesla2: 415,
+      sands: 400,
+      carInsurance: 202,
+      electric: 250,
+      phone: 150,
+      water: 150,
+      insurance: 90,
+      internet: 65,
+      tucker: 45,
+      odie: 30,
+      amazon: 20,
+      netflix: 20,
+      max: 20,
+      sling: 40
+    };
+
+    // Calculate monthly income from annual
+    function calculateMonthlyIncome(yourIncome, wifeIncome) {
+      const yourMonthly = (yourIncome * 0.7253) / 12;
+      const wifeMonthly = (wifeIncome * 0.7253) / 12;
+      return Math.round(yourMonthly + wifeMonthly);
+    }
+
+    // Initial income values
+    let yourIncome = 87000;
+    let wifeIncome = 95000;
+    let monthlyIncome = calculateMonthlyIncome(yourIncome, wifeIncome);
+
+    // Calculate initial bills and surplus
     let floridaBills = Object.values(floridaExpenses).reduce((sum, val) => sum + val, 0);
-    const income = 11000;
-    let floridaSurplus = income - floridaBills;
+    let floridaSurplus = monthlyIncome - floridaBills;
+    let knoxvilleBills = Object.values(knoxvilleExpenses).reduce((sum, val) => sum + val, 0);
+    let knoxvilleSurplus = monthlyIncome - knoxvilleBills;
 
     // Create the bar chart
     const chart = new Chart(ctx, {
@@ -150,14 +270,14 @@
         datasets: [
           {
             label: 'Knoxville (Current)',
-            data: [11000, 4000, 7000],
+            data: [monthlyIncome, knoxvilleBills, knoxvilleSurplus],
             backgroundColor: 'rgba(54, 162, 235, 0.8)', // Blue
             borderColor: 'rgba(54, 162, 235, 1)',
             borderWidth: 1
           },
           {
             label: 'Florida (Projected)',
-            data: [11000, floridaBills, floridaSurplus],
+            data: [monthlyIncome, floridaBills, floridaSurplus],
             backgroundColor: 'rgba(255, 159, 64, 0.8)', // Orange
             borderColor: 'rgba(255, 159, 64, 1)',
             borderWidth: 1
@@ -244,15 +364,43 @@
       }
     });
 
-    // Add event listeners to inputs
-    expenseInputs.forEach(id => {
-      const input = document.getElementById(id);
+    // Update chart function
+    function updateChart() {
+      monthlyIncome = calculateMonthlyIncome(yourIncome, wifeIncome);
+      floridaBills = Object.values(floridaExpenses).reduce((sum, val) => sum + val, 0);
+      floridaSurplus = monthlyIncome - floridaBills;
+      knoxvilleBills = Object.values(knoxvilleExpenses).reduce((sum, val) => sum + val, 0);
+      knoxvilleSurplus = monthlyIncome - knoxvilleBills;
+      chart.data.datasets[0].data = [monthlyIncome, knoxvilleBills, knoxvilleSurplus];
+      chart.data.datasets[1].data = [monthlyIncome, floridaBills, floridaSurplus];
+      chart.update();
+    }
+
+    // Add event listeners to income inputs
+    document.getElementById('yourIncome').addEventListener('input', () => {
+      yourIncome = parseFloat(document.getElementById('yourIncome').value) || 0;
+      updateChart();
+    });
+    document.getElementById('wifeIncome').addEventListener('input', () => {
+      wifeIncome = parseFloat(document.getElementById('wifeIncome').value) || 0;
+      updateChart();
+    });
+
+    // Add event listeners to Florida expense inputs
+    expenseKeys.forEach(key => {
+      const input = document.getElementById(`florida${key.charAt(0).toUpperCase() + key.slice(1)}`);
       input.addEventListener('input', () => {
-        floridaExpenses[id] = parseFloat(input.value) || 0;
-        floridaBills = Object.values(floridaExpenses).reduce((sum, val) => sum + val, 0);
-        floridaSurplus = income - floridaBills;
-        chart.data.datasets[1].data = [income, floridaBills, floridaSurplus];
-        chart.update();
+        floridaExpenses[key] = parseFloat(input.value) || 0;
+        updateChart();
+      });
+    });
+
+    // Add event listeners to Knoxville expense inputs
+    expenseKeys.forEach(key => {
+      const input = document.getElementById(`knoxville${key.charAt(0).toUpperCase() + key.slice(1)}`);
+      input.addEventListener('input', () => {
+        knoxvilleExpenses[key] = parseFloat(input.value) || 0;
+        updateChart();
       });
     });
   </script>
