@@ -48,6 +48,14 @@
         </div>
       </div>
     </div>
+    <div class="mb-6 bg-white shadow-lg rounded-lg p-6">
+      <h2 class="text-xl font-semibold text-gray-800 text-center">
+        Minimum Combined Annual Income (Zero Surplus) - Knoxville: <span id="knoxvilleMinIncome">$0</span> | Florida: <span id="floridaMinIncome">$0</span>
+      </h2>
+      <h3 class="text-base text-gray-600 text-center mt-2">
+        Current Combined Annual Income: <span id="currentCombinedIncome">$0</span>
+      </h3>
+    </div>
     <div class="chart-container bg-white shadow-lg rounded-lg">
       <canvas id="budgetChart"></canvas>
     </div>
@@ -292,6 +300,11 @@
       return Math.round(yourMonthly + wifeMonthly);
     }
 
+    // Calculate minimum annual income for zero surplus
+    function calculateMinAnnualIncome(monthlyBills) {
+      return Math.round((monthlyBills * 12) / 0.7253);
+    }
+
     // Initial income values
     let yourIncome = 87000;
     let wifeIncome = 95000;
@@ -414,7 +427,7 @@
       }
     });
 
-    // Update chart function
+    // Update chart and income displays
     function updateChart() {
       monthlyIncome = calculateMonthlyIncome(yourIncome, wifeIncome);
       floridaBills = calculateBills(floridaExpenses, customExpenses, 'florida');
@@ -424,6 +437,11 @@
       chart.data.datasets[0].data = [monthlyIncome, knoxvilleBills, knoxvilleSurplus];
       chart.data.datasets[1].data = [monthlyIncome, floridaBills, floridaSurplus];
       chart.update();
+      // Update minimum income display
+      document.getElementById('knoxvilleMinIncome').textContent = `$${calculateMinAnnualIncome(knoxvilleBills).toLocaleString()}`;
+      document.getElementById('floridaMinIncome').textContent = `$${calculateMinAnnualIncome(floridaBills).toLocaleString()}`;
+      // Update current combined income display
+      document.getElementById('currentCombinedIncome').textContent = `$${ (yourIncome + wifeIncome).toLocaleString() }`;
     }
 
     // Render custom expenses for a specific location
@@ -496,6 +514,9 @@
         updateChart();
       });
     });
+
+    // Initial update to set minimum and current income values
+    updateChart();
   </script>
 </body>
 </html>
