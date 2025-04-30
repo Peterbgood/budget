@@ -59,6 +59,10 @@
           <input type="number" id="knoxvilleMortgage" value="1585" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
+          <label for="knoxvilleFoodGroceries" class="block text-sm font-medium text-gray-700">Food/Groceries</label>
+          <input type="number" id="knoxvilleFoodGroceries" value="1600" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
           <label for="knoxvilleTesla1" class="block text-sm font-medium text-gray-700">Tesla (1)</label>
           <input type="number" id="knoxvilleTesla1" value="490" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
@@ -142,6 +146,10 @@
           <input type="number" id="floridaMortgage" value="2600" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
+          <label for="floridaFoodGroceries" class="block text-sm font-medium text-gray-700">Food/Groceries</label>
+          <input type="number" id="floridaFoodGroceries" value="1600" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div>
           <label for="floridaTesla1" class="block text-sm font-medium text-gray-700">Tesla (1)</label>
           <input type="number" id="floridaTesla1" value="490" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
@@ -172,7 +180,8 @@
         <div>
           <label for="floridaInsurance" class="block text-sm font-medium text-gray-700">Insurance</label>
           <input type="number" id="floridaInsurance" value="90" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-         <div>
+        </div>
+        <div>
           <label for="floridaInternet" class="block text-sm font-medium text-gray-700">Internet</label>
           <input type="number" id="floridaInternet" value="65" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
@@ -227,13 +236,14 @@
 
     // Fixed expense input IDs
     const fixedExpenseKeys = [
-      'mortgage', 'tesla1', 'tesla2', 'sands', 'carInsurance', 'electric', 'phone',
+      'mortgage', 'foodGroceries', 'tesla1', 'tesla2', 'sands', 'carInsurance', 'electric', 'phone',
       'water', 'insurance', 'internet', 'tucker', 'odie', 'amazon', 'netflix', 'max', 'sling'
     ];
 
     // Initial Florida expenses (fixed)
     const floridaExpenses = {
       mortgage: 2600,
+      foodGroceries: 1600,
       tesla1: 490,
       tesla2: 415,
       sands: 400,
@@ -254,6 +264,7 @@
     // Initial Knoxville expenses (fixed)
     const knoxvilleExpenses = {
       mortgage: 1585,
+      foodGroceries: 1600,
       tesla1: 490,
       tesla2: 415,
       sands: 400,
