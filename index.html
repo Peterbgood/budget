@@ -52,6 +52,7 @@
       <h3 class="text-base text-gray-600 text-left">
         Min Annual Inc (Knox): <span id="knoxvilleMinIncome">$0</span><br>
         Min Annual Inc (FL): <span id="floridaMinIncome">$0</span><br>
+        Monthly Combined Inc: <span id="monthlyCombinedIncome">$0</span><br>
         Your Monthly Inc: <span id="yourMonthlyIncome">$0</span><br>
         Wife's Monthly Inc: <span id="wifeMonthlyIncome">$0</span><br>
         Monthly Bills (Knox): <span id="knoxvilleTotalBills">$0</span><br>
@@ -97,8 +98,8 @@
         </div>
         <div>
           <label for="knoxvillePhone" class="block text-sm font-medium text-gray-700">Phone</label>
-          <input type="number" id="knoxvillePhone" value="150" class=" estómago
-
+          <input type="number" id="knoxvillePhone" value="150" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
         <div>
           <label for="knoxvilleWater" class="block text-sm font-medium text-gray-700">Water</label>
           <input type="number" id="knoxvilleWater" value="150" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
@@ -113,7 +114,7 @@
         </div>
         <div>
           <label for="knoxvilleTucker" class="block text-sm font-medium text-gray-700">Tucker</label>
-          <input type="number" id="knoxvilleTucker" value="45" class="mt-1 block refring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <input type="number" id="knoxvilleTucker" value="45" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div>
           <label for="knoxvilleOdie" class="block text-sm font-medium text-gray-700">Odie</label>
@@ -451,6 +452,8 @@
       // Update minimum income display
       document.getElementById('knoxvilleMinIncome').textContent = `$${calculateMinAnnualIncome(knoxvilleBills).toLocaleString()}`;
       document.getElementById('floridaMinIncome').textContent = `$${calculateMinAnnualIncome(floridaBills).toLocaleString()}`;
+      // Update monthly combined income display
+      document.getElementById('monthlyCombinedIncome').textContent = `$${incomeData.total.toLocaleString()}`;
       // Update current combined income display
       document.getElementById('currentCombinedIncome').textContent = `$${(yourIncome + wifeIncome).toLocaleString()}`;
       // Update monthly income and total bills display
