@@ -49,10 +49,12 @@
       </div>
     </div>
     <div class="mb-6 bg-white shadow-lg rounded-lg p-6">
-      <h3 class="text-base text-gray-600 text-center">
-        Minimum Combined Annual Income (Zero Surplus) - Knoxville: <span id="knoxvilleMinIncome">$0</span> | Florida: <span id="floridaMinIncome">$0</span>
+      <h3 class="text-base text-gray-600 text-left">
+        Minimum Combined Annual Income (Zero Surplus) - Knoxville: <span id="knoxvilleMinIncome">$0</span> | Florida: <span id="floridaMinIncome">$0</span><br>
+        Your Monthly Income: <span id="yourMonthlyIncome">$0</span> | Wife's Monthly Income: <span id="wifeMonthlyIncome">$0</span><br>
+        Total Monthly Bills - Knoxville: <span id="knoxvilleTotalBills">$0</span> | Florida: <span id="floridaTotalBills">$0</span>
       </h3>
-      <h3 class="text-base text-gray-600 text-center mt-2">
+      <h3 class="text-base text-gray-600 text-left mt-2">
         Current Combined Annual Income: <span id="currentCombinedIncome">$0</span>
       </h3>
     </div>
@@ -297,7 +299,11 @@
     function calculateMonthlyIncome(yourIncome, wifeIncome) {
       const yourMonthly = (yourIncome * 0.7253) / 12;
       const wifeMonthly = (wifeIncome * 0.7253) / 12;
-      return Math.round(yourMonthly + wifeMonthly);
+      return {
+        total: Math.round(yourMonthly + wifeMonthly),
+        yourMonthly: Math.round(yourMonthly),
+        wifeMonthly: Math.round(wifeMonthly)
+      };
     }
 
     // Calculate minimum annual income for zero surplus
@@ -308,7 +314,8 @@
     // Initial income values
     let yourIncome = 87000;
     let wifeIncome = 95000;
-    let monthlyIncome = calculateMonthlyIncome(yourIncome, wifeIncome);
+    let incomeData = calculateMonthlyIncome(yourIncome, wifeIncome);
+    let monthlyIncome = incomeData.total;
 
     // Calculate total bills
     function calculateBills(expenses, customExpenses, location) {
@@ -429,7 +436,8 @@
 
     // Update chart and income displays
     function updateChart() {
-      monthlyIncome = calculateMonthlyIncome(yourIncome, wifeIncome);
+      incomeData = calculateMonthlyIncome(yourIncome, wifeIncome);
+      monthlyIncome = incomeData.total;
       floridaBills = calculateBills(floridaExpenses, customExpenses, 'florida');
       floridaSurplus = monthlyIncome - floridaBills;
       knoxvilleBills = calculateBills(knoxvilleExpenses, customExpenses, 'knoxville');
@@ -442,6 +450,11 @@
       document.getElementById('floridaMinIncome').textContent = `$${calculateMinAnnualIncome(floridaBills).toLocaleString()}`;
       // Update current combined income display
       document.getElementById('currentCombinedIncome').textContent = `$${(yourIncome + wifeIncome).toLocaleString()}`;
+      // Update monthly income and total bills display
+      document.getElementById('yourMonthlyIncome').textContent = `$${incomeData.yourMonthly.toLocaleString()}`;
+      document.getElementById('wifeMonthlyIncome').textContent = `$${incomeData.wifeMonthly.toLocaleString()}`;
+      document.getElementById('knoxvilleTotalBills').textContent = `$${knoxvilleBills.toLocaleString()}`;
+      document.getElementById('floridaTotalBills').textContent = `$${floridaBills.toLocaleString()}`;
     }
 
     // Render custom expenses for a specific location
