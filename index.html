@@ -56,7 +56,11 @@
         Your Monthly Inc: <span id="yourMonthlyIncome">$0</span><br>
         Wife's Monthly Inc: <span id="wifeMonthlyIncome">$0</span><br>
         Monthly Bills (Knox): <span id="knoxvilleTotalBills">$0</span><br>
-        Monthly Bills (FL): <span id="floridaTotalBills">$0</span>
+        Monthly Bills (FL): <span id="floridaTotalBills">$0</span><br>
+        Knoxville Mortgage-to-Income Ratio: <span id="knoxvilleMortgageRatio">0%</span><br>
+        Florida Mortgage-to-Income Ratio: <span id="floridaMortgageRatio">0%</span><br>
+        Knoxville Bills-to-Income Ratio: <span id="knoxvilleBillsRatio">0%</span><br>
+        Florida Bills-to-Income Ratio: <span id="floridaBillsRatio">0%</span>
       </h3>
       <h3 class="text-base text-gray-600 text-left mt-2">
         Current Combined Annual Income: <span id="currentCombinedIncome">$0</span>
@@ -177,7 +181,7 @@
         </div>
         <div>
           <label for="floridaCarInsurance" class="block text-sm font-medium text-gray-700">Car Insurance</label>
-          <input type="number" id="floridaCarInsurance" value="350" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          <input type="number" id="floridaCarInsurance" value="350" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-486a0f75b4f473c9ed5e4a1c4f83e7b5 sm:text-sm">
         </div>
         <div>
           <label for="floridaElectric" class="block text-sm font-medium text-gray-700">Kub - Electric</label>
@@ -313,6 +317,16 @@
     // Calculate minimum annual income for zero surplus
     function calculateMinAnnualIncome(monthlyBills) {
       return Math.round((monthlyBills * 12) / 0.7253);
+    }
+
+    // Calculate mortgage-to-income ratio
+    function calculateMortgageToIncomeRatio(mortgage, grossMonthlyIncome) {
+      return grossMonthlyIncome > 0 ? ((mortgage / grossMonthlyIncome) * 100).toFixed(1) : 0;
+    }
+
+    // Calculate bills-to-income ratio
+    function calculateBillsToIncomeRatio(bills, grossMonthlyIncome) {
+      return grossMonthlyIncome > 0 ? ((bills / grossMonthlyIncome) * 100).toFixed(1) : 0;
     }
 
     // Initial income values
@@ -458,9 +472,15 @@
       document.getElementById('currentCombinedIncome').textContent = `$${(yourIncome + wifeIncome).toLocaleString()}`;
       // Update monthly income and total bills display
       document.getElementById('yourMonthlyIncome').textContent = `$${incomeData.yourMonthly.toLocaleString()}`;
-      document.getElementById('wifeMonthlyIncome').textContent = `$${incomeData.wifeMonthly.toLocaleString()}`;
+      document.getElementById('wifeMonthlyIncome').textContent = `$${(incomeData.wifeMonthly).toLocaleString()}`;
       document.getElementById('knoxvilleTotalBills').textContent = `$${knoxvilleBills.toLocaleString()}`;
       document.getElementById('floridaTotalBills').textContent = `$${floridaBills.toLocaleString()}`;
+      // Update mortgage-to-income and bills-to-income ratios
+      const grossMonthlyIncome = (yourIncome + wifeIncome) / 12;
+      document.getElementById('knoxvilleMortgageRatio').textContent = `${calculateMortgageToIncomeRatio(knoxvilleExpenses.mortgage, grossMonthlyIncome)}%`;
+      document.getElementById('floridaMortgageRatio').textContent = `${calculateMortgageToIncomeRatio(floridaExpenses.mortgage, grossMonthlyIncome)}%`;
+      document.getElementById('knoxvilleBillsRatio').textContent = `${calculateBillsToIncomeRatio(knoxvilleBills, grossMonthlyIncome)}%`;
+      document.getElementById('floridaBillsRatio').textContent = `${calculateBillsToIncomeRatio(floridaBills, grossMonthlyIncome)}%`;
     }
 
     // Render custom expenses for a specific location
