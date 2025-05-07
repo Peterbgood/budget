@@ -228,21 +228,7 @@
             <label for="knoxvilleSling" class="block text-sm font-medium text-gray-700">Sling TV</label>
             <input type="number" id="knoxvilleSling" value="40" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
           </div>
-          <div>
-            <label for="knoxvilleCustomExpenseName" class="block text-sm font-medium text-gray-700">Custom Expense Name</label>
-            <input type="text" id="knoxvilleCustomExpenseName" placeholder="Enter expense name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-          </div>
-          <div class="flex gap-4">
-            <div class="flex-1">
-              <label for="knoxvilleCustomExpenseValue" class="block text-sm font-medium text-gray-700">Monthly Value ($)</label>
-              <input type="number" id="knoxvilleCustomExpenseValue" value="0" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-            </div>
-            <div class="flex items-end">
-              <button id="knoxvilleAddCustomExpense" class="w-full bg-indigo-600 text-white font-medium py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">Add Expense</button>
-            </div>
-          </div>
         </div>
-        <div id="knoxvilleCustomExpensesList" class="mt-4 grid grid-cols-1 gap-4"></div>
       </div>
       <div class="expense-section bg-white shadow-lg rounded-lg p-6">
         <h2 class="text-xl font-semibold text-gray-800 mb-4">Edit Florida Expenses</h2>
@@ -315,21 +301,7 @@
             <label for="floridaSling" class="block text-sm font-medium text-gray-700">Sling TV</label>
             <input type="number" id="floridaSling" value="40" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
           </div>
-          <div>
-            <label for="floridaCustomExpenseName" class="block text-sm font-medium text-gray-700">Custom Expense Name</label>
-            <input type="text" id="floridaCustomExpenseName" placeholder="Enter expense name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-          </div>
-          <div class="flex gap-4">
-            <div class="flex-1">
-              <label for="floridaCustomExpenseValue" class="block text-sm font-medium text-gray-700">Monthly Value ($)</label>
-              <input type="number" id="floridaCustomExpenseValue" value="0" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-            </div>
-            <div class="flex items-end">
-              <button id="floridaAddCustomExpense" class="w-full bg-indigo-600 text-white font-medium py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">Add Expense</button>
-            </div>
-          </div>
         </div>
-        <div id="floridaCustomExpensesList" class="mt-4 grid grid-cols-1 gap-4"></div>
       </div>
     </div>
   </div>
@@ -389,9 +361,6 @@
       sling: 40
     };
 
-    // Custom expenses storage
-    let customExpenses = [];
-
     // Calculate monthly income from annual
     function calculateMonthlyIncome(yourIncome, wifeIncome) {
       const yourMonthly = (yourIncome * 0.7253) / 12;
@@ -425,18 +394,14 @@
     let monthlyIncome = incomeData.total;
 
     // Calculate total bills
-    function calculateBills(expenses, customExpenses, location) {
-      let total = Object.values(expenses).reduce((sum, val) => sum + val, 0);
-      customExpenses.forEach(exp => {
-        total += (location === 'florida' ? exp.floridaValue : exp.knoxvilleValue);
-      });
-      return total;
+    function calculateBills(expenses) {
+      return Object.values(expenses).reduce((sum, val) => sum + val, 0);
     }
 
     // Initial bills and surplus
-    let floridaBills = calculateBills(floridaExpenses, customExpenses, 'florida');
+    let floridaBills = calculateBills(floridaExpenses);
     let floridaSurplus = monthlyIncome - floridaBills;
-    let knoxvilleBills = calculateBills(knoxvilleExpenses, customExpenses, 'knoxville');
+    let knoxvilleBills = calculateBills(knoxvilleExpenses);
     let knoxvilleSurplus = monthlyIncome - knoxvilleBills;
 
     // Create the bar chart
@@ -545,9 +510,9 @@
     function updateChart() {
       incomeData = calculateMonthlyIncome(yourIncome, wifeIncome);
       monthlyIncome = incomeData.total;
-      floridaBills = calculateBills(floridaExpenses, customExpenses, 'florida');
+      floridaBills = calculateBills(floridaExpenses);
       floridaSurplus = monthlyIncome - floridaBills;
-      knoxvilleBills = calculateBills(knoxvilleExpenses, customExpenses, 'knoxville');
+      knoxvilleBills = calculateBills(knoxvilleExpenses);
       knoxvilleSurplus = monthlyIncome - knoxvilleBills;
       chart.data.datasets[0].data = [monthlyIncome, knoxvilleBills, knoxvilleSurplus];
       chart.data.datasets[1].data = [monthlyIncome, floridaBills, floridaSurplus];
@@ -574,49 +539,6 @@
       document.getElementById('knoxvilleBillsRatio').textContent = `${calculateBillsToIncomeRatio(knoxvilleBills, grossMonthlyIncome)}%`;
       document.getElementById('floridaBillsRatio').textContent = `${calculateBillsToIncomeRatio(floridaBills, grossMonthlyIncome)}%`;
     }
-
-    // Render custom expenses for a specific location
-    function renderCustomExpenses(location, containerId) {
-      const container = document.getElementById(containerId);
-      container.innerHTML = '';
-      customExpenses.forEach((exp, index) => {
-        const div = document.createElement('div');
-        div.innerHTML = `
-          <label for="${location}Custom${index}" class="block text-sm font-medium text-gray-700">${exp.name}</label>
-          <input type="number" id="${location}Custom${index}" value="${location === 'florida' ? exp.floridaValue : exp.knoxvilleValue}" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-        `;
-        container.appendChild(div);
-        document.getElementById(`${location}Custom${index}`).addEventListener('input', () => {
-          customExpenses[index][`${location}Value`] = parseFloat(document.getElementById(`${location}Custom${index}`).value) || 0;
-          updateChart();
-        });
-      });
-    }
-
-    // Add custom expense
-    function addCustomExpense(location) {
-      const nameInput = document.getElementById(`${location}CustomExpenseName`);
-      const valueInput = document.getElementById(`${location}CustomExpenseValue`);
-      const name = nameInput.value.trim();
-      const value = parseFloat(valueInput.value) || 0;
-
-      if (name) {
-        customExpenses.push({
-          name,
-          floridaValue: location === 'florida' ? value : 0,
-          knoxvilleValue: location === 'knoxville' ? value : 0
-        });
-        nameInput.value = '';
-        valueInput.value = '0';
-        renderCustomExpenses('florida', 'floridaCustomExpensesList');
-        renderCustomExpenses('knoxville', 'knoxvilleCustomExpensesList');
-        updateChart();
-      }
-    }
-
-    // Add event listeners for custom expense buttons
-    document.getElementById('knoxvilleAddCustomExpense').addEventListener('click', () => addCustomExpense('knoxville'));
-    document.getElementById('floridaAddCustomExpense').addEventListener('click', () => addCustomExpense('florida'));
 
     // Add event listeners to income inputs
     document.getElementById('yourIncome').addEventListener('input', () => {
