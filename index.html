@@ -84,15 +84,15 @@
               <p class="text-base text-gray-900" id="currentCombinedIncome">$0</p>
             </div>
             <div>
-              <p class="text-sm font-medium text-gray-700">Monthly Combined Income:</p>
+              <p class="text-sm font-medium text-gray-700">Monthly Combined Income (After Tax):</p>
               <p class="text-base text-gray-900" id="monthlyCombinedIncome">$0</p>
             </div>
             <div>
-              <p class="text-sm font-medium text-gray-700">Your Monthly Income:</p>
+              <p class="text-sm font-medium text-gray-700">Your Monthly Income (After Tax):</p>
               <p class="text-base text-gray-900" id="yourMonthlyIncome">$0</p>
             </div>
             <div>
-              <p class="text-sm font-medium text-gray-700">Wife's Monthly Income:</p>
+              <p class="text-sm font-medium text-gray-700">Wife's Monthly Income (After Tax):</p>
               <p class="text-base text-gray-900" id="wifeMonthlyIncome">$0</p>
             </div>
           </div>
@@ -129,25 +129,39 @@
             </div>
           </div>
         </div>
+        <!-- Surplus -->
+        <div class="mb-4">
+          <h3 class="text-lg font-medium text-gray-700 mb-2">Surplus</h3>
+          <div class="space-y-2">
+            <div>
+              <p class="text-sm font-medium text-gray-700">Monthly Surplus (Knoxville):</p>
+              <p class="text-base text-gray-900" id="knoxvilleSurplus">$0</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-700">Monthly Surplus (Florida):</p>
+              <p class="text-base text-gray-900" id="floridaSurplus">$0</p>
+            </div>
+          </div>
+        </div>
         <!-- Financial Ratios -->
         <div class="mb-4">
           <h3 class="text-lg font-medium text-gray-700 mb-2">Financial Ratios</h3>
           <div class="space-y-2">
             <div>
-              <p class="text-sm font-medium text-gray-700">Knoxville Mortgage-to-Income Ratio:</p>
-              <p class="text-base text-gray-900" id="knoxvilleMortgageRatio">0%</p>
+              <p class="text-sm font-medium text-gray-700">Knoxville Housing Cost Ratio:</p>
+              <p class="text-base text-gray-900" id="knoxvilleHousingRatio">0%</p>
             </div>
             <div>
-              <p class="text-sm font-medium text-gray-700">Florida Mortgage-to-Income Ratio:</p>
-              <p class="text-base text-gray-900" id="floridaMortgageRatio">0%</p>
+              <p class="text-sm font-medium text-gray-700">Florida Housing Cost Ratio:</p>
+              <p class="text-base text-gray-900" id="floridaHousingRatio">0%</p>
             </div>
             <div>
-              <p class="text-sm font-medium text-gray-700">Knoxville Bills-to-Income Ratio:</p>
-              <p class="text-base text-gray-900" id="knoxvilleBillsRatio">0%</p>
+              <p class="text-sm font-medium text-gray-700">Knoxville Total Expenses-to-Income Ratio:</p>
+              <p class="text-base text-gray-900" id="knoxvilleExpensesRatio">0%</p>
             </div>
             <div>
-              <p class="text-sm font-medium text-gray-700">Florida Bills-to-Income Ratio:</p>
-              <p class="text-base text-gray-900" id="floridaBillsRatio">0%</p>
+              <p class="text-sm font-medium text-gray-700">Florida Total Expenses-to-Income Ratio:</p>
+              <p class="text-base text-gray-900" id="floridaExpensesRatio">0%</p>
             </div>
           </div>
         </div>
@@ -377,13 +391,13 @@
       return Math.round((monthlyBills * 12) / 0.7253);
     }
 
-    // Calculate mortgage-to-income ratio
-    function calculateMortgageToIncomeRatio(mortgage, grossMonthlyIncome) {
+    // Calculate housing cost ratio
+    function calculateHousingCostRatio(mortgage, grossMonthlyIncome) {
       return grossMonthlyIncome > 0 ? ((mortgage / grossMonthlyIncome) * 100).toFixed(1) : 0;
     }
 
-    // Calculate bills-to-income ratio
-    function calculateBillsToIncomeRatio(bills, grossMonthlyIncome) {
+    // Calculate total expenses-to-income ratio
+    function calculateExpensesToIncomeRatio(bills, grossMonthlyIncome) {
       return grossMonthlyIncome > 0 ? ((bills / grossMonthlyIncome) * 100).toFixed(1) : 0;
     }
 
@@ -526,18 +540,21 @@
       document.getElementById('currentCombinedIncome').textContent = `$${(yourIncome + wifeIncome).toLocaleString()}`;
       // Update monthly income and total bills display
       document.getElementById('yourMonthlyIncome').textContent = `$${incomeData.yourMonthly.toLocaleString()}`;
-      document.getElementById('wifeMonthlyIncome').textContent = `$${(incomeData.wifeMonthly).toLocaleString()}`;
+      document.getElementById('wifeMonthlyIncome').textContent = `$${incomeData.wifeMonthly.toLocaleString()}`;
       document.getElementById('knoxvilleTotalBills').textContent = `$${knoxvilleBills.toLocaleString()}`;
       document.getElementById('floridaTotalBills').textContent = `$${floridaBills.toLocaleString()}`;
+      // Update surplus display
+      document.getElementById('knoxvilleSurplus').textContent = `$${knoxvilleSurplus.toLocaleString()}`;
+      document.getElementById('floridaSurplus').textContent = `$${floridaSurplus.toLocaleString()}`;
       // Update bills difference display
       const billsDifference = floridaBills - knoxvilleBills;
       document.getElementById('billsDifference').textContent = `$${billsDifference.toLocaleString()}`;
-      // Update mortgage-to-income and bills-to-income ratios
+      // Update financial ratios
       const grossMonthlyIncome = (yourIncome + wifeIncome) / 12;
-      document.getElementById('knoxvilleMortgageRatio').textContent = `${calculateMortgageToIncomeRatio(knoxvilleExpenses.mortgage, grossMonthlyIncome)}%`;
-      document.getElementById('floridaMortgageRatio').textContent = `${calculateMortgageToIncomeRatio(floridaExpenses.mortgage, grossMonthlyIncome)}%`;
-      document.getElementById('knoxvilleBillsRatio').textContent = `${calculateBillsToIncomeRatio(knoxvilleBills, grossMonthlyIncome)}%`;
-      document.getElementById('floridaBillsRatio').textContent = `${calculateBillsToIncomeRatio(floridaBills, grossMonthlyIncome)}%`;
+      document.getElementById('knoxvilleHousingRatio').textContent = `${calculateHousingCostRatio(knoxvilleExpenses.mortgage, grossMonthlyIncome)}%`;
+      document.getElementById('floridaHousingRatio').textContent = `${calculateHousingCostRatio(floridaExpenses.mortgage, grossMonthlyIncome)}%`;
+      document.getElementById('knoxvilleExpensesRatio').textContent = `${calculateExpensesToIncomeRatio(knoxvilleBills, grossMonthlyIncome)}%`;
+      document.getElementById('floridaExpensesRatio').textContent = `${calculateExpensesToIncomeRatio(floridaBills, grossMonthlyIncome)}%`;
     }
 
     // Add event listeners to income inputs
