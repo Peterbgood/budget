@@ -75,53 +75,81 @@
     <div class="mb-6 bg-white shadow-lg rounded-lg p-6">
       <h2 class="text-xl font-semibold text-gray-800 mb-4">Financial Summary</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <p class="text-sm font-medium text-gray-700">Minimum Annual Income (Knoxville):</p>
-          <p class="text-base text-gray-900" id="knoxvilleMinIncome">$0</p>
+        <!-- Income Details -->
+        <div class="mb-4">
+          <h3 class="text-lg font-medium text-gray-700 mb-2">Income Details</h3>
+          <div class="space-y-2">
+            <div>
+              <p class="text-sm font-medium text-gray-700">Current Combined Annual Income:</p>
+              <p class="text-base text-gray-900" id="currentCombinedIncome">$0</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-700">Monthly Combined Income:</p>
+              <p class="text-base text-gray-900" id="monthlyCombinedIncome">$0</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-700">Your Monthly Income:</p>
+              <p class="text-base text-gray-900" id="yourMonthlyIncome">$0</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-700">Wife's Monthly Income:</p>
+              <p class="text-base text-gray-900" id="wifeMonthlyIncome">$0</p>
+            </div>
+          </div>
         </div>
-        <div>
-          <p class="text-sm font-medium text-gray-700">Minimum Annual Income (Florida):</p>
-          <p class="text-base text-gray-900" id="floridaMinIncome">$0</p>
+        <!-- Minimum Income Requirements -->
+        <div class="mb-4">
+          <h3 class="text-lg font-medium text-gray-700 mb-2">Minimum Income Requirements</h3>
+          <div class="space-y-2">
+            <div>
+              <p class="text-sm font-medium text-gray-700">Minimum Annual Income (Knoxville):</p>
+              <p class="text-base text-gray-900" id="knoxvilleMinIncome">$0</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-700">Minimum Annual Income (Florida):</p>
+              <p class="text-base text-gray-900" id="floridaMinIncome">$0</p>
+            </div>
+          </div>
         </div>
-        <div>
-          <p class="text-sm font-medium text-gray-700">Monthly Combined Income:</p>
-          <p class="text-base text-gray-900" id="monthlyCombinedIncome">$0</p>
+        <!-- Monthly Bills -->
+        <div class="mb-4">
+          <h3 class="text-lg font-medium text-gray-700 mb-2">Monthly Bills</h3>
+          <div class="space-y-2">
+            <div>
+              <p class="text-sm font-medium text-gray-700">Monthly Bills (Knoxville):</p>
+              <p class="text-base text-gray-900" id="knoxvilleTotalBills">$0</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-700">Monthly Bills (Florida):</p>
+              <p class="text-base text-gray-900" id="floridaTotalBills">$0</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-700">Difference in Bills (Florida - Knoxville):</p>
+              <p class="text-base text-gray-900" id="billsDifference">$0</p>
+            </div>
+          </div>
         </div>
-        <div>
-          <p class="text-sm font-medium text-gray-700">Your Monthly Income:</p>
-          <p class="text-base text-gray-900" id="yourMonthlyIncome">$0</p>
-        </div>
-        <div>
-          <p class="text-sm font-medium text-gray-700">Wife's Monthly Income:</p>
-          <p class="text-base text-gray-900" id="wifeMonthlyIncome">$0</p>
-        </div>
-        <div>
-          <p class="text-sm font-medium text-gray-700">Monthly Bills (Knoxville):</p>
-          <p class="text-base text-gray-900" id="knoxvilleTotalBills">$0</p>
-        </div>
-        <div>
-          <p class="text-sm font-medium text-gray-700">Monthly Bills (Florida):</p>
-          <p class="text-base text-gray-900" id="floridaTotalBills">$0</p>
-        </div>
-        <div>
-          <p class="text-sm font-medium text-gray-700">Knoxville Mortgage-to-Income Ratio:</p>
-          <p class="text-base text-gray-900" id="knoxvilleMortgageRatio">0%</p>
-        </div>
-        <div>
-          <p class="text-sm font-medium text-gray-700">Florida Mortgage-to-Income Ratio:</p>
-          <p class="text-base text-gray-900" id="floridaMortgageRatio">0%</p>
-        </div>
-        <div>
-          <p class="text-sm font-medium text-gray-700">Knoxville Bills-to-Income Ratio:</p>
-          <p class="text-base text-gray-900" id="knoxvilleBillsRatio">0%</p>
-        </div>
-        <div>
-          <p class="text-sm font-medium text-gray-700">Florida Bills-to-Income Ratio:</p>
-          <p class="text-base text-gray-900" id="floridaBillsRatio">0%</p>
-        </div>
-        <div>
-          <p class="text-sm font-medium text-gray-700">Current Combined Annual Income:</p>
-          <p class="text-base text-gray-900" id="currentCombinedIncome">$0</p>
+        <!-- Financial Ratios -->
+        <div class="mb-4">
+          <h3 class="text-lg font-medium text-gray-700 mb-2">Financial Ratios</h3>
+          <div class="space-y-2">
+            <div>
+              <p class="text-sm font-medium text-gray-700">Knoxville Mortgage-to-Income Ratio:</p>
+              <p class="text-base text-gray-900" id="knoxvilleMortgageRatio">0%</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-700">Florida Mortgage-to-Income Ratio:</p>
+              <p class="text-base text-gray-900" id="floridaMortgageRatio">0%</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-700">Knoxville Bills-to-Income Ratio:</p>
+              <p class="text-base text-gray-900" id="knoxvilleBillsRatio">0%</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-gray-700">Florida Bills-to-Income Ratio:</p>
+              <p class="text-base text-gray-900" id="floridaBillsRatio">0%</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -134,7 +162,7 @@
         <div class="grid grid-cols-1 gap-4" id="knoxvilleExpensesGrid">
           <div>
             <label for="knoxvilleMortgage" class="block text-sm font-medium text-gray-700">Mortgage</label>
-            <input type="number" id="knoxvilleMortgage" value="1585" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <input type="number" id="knoxvilleMortgage" value="2300" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
           </div>
           <div>
             <label for="knoxvilleFoodGroceries" class="block text-sm font-medium text-gray-700">Food/Groceries</label>
@@ -221,7 +249,7 @@
         <div class="grid grid-cols-1 gap-4" id="floridaExpensesGrid">
           <div>
             <label for="floridaMortgage" class="block text-sm font-medium text-gray-700">Mortgage</label>
-            <input type="number" id="floridaMortgage" value="2600" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <input type="number" id="floridaMortgage" value="3000" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
           </div>
           <div>
             <label for="floridaFoodGroceries" class="block text-sm font-medium text-gray-700">Food/Groceries</label>
@@ -241,7 +269,7 @@
           </div>
           <div>
             <label for="floridaCarInsurance" class="block text-sm font-medium text-gray-700">Car Insurance</label>
-            <input type="number" id="floridaCarInsurance" value="500" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <input type="number" id="floridaCarInsurance" value="600" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
           </div>
           <div>
             <label for="floridaElectric" class="block text-sm font-medium text-gray-700">Kub - Electric</label>
@@ -321,12 +349,12 @@
 
     // Initial Florida expenses (fixed)
     const floridaExpenses = {
-      mortgage: 2600,
+      mortgage: 3000,
       foodGroceries: 2000,
       tesla1: 490,
       tesla2: 415,
       sands: 400,
-      carInsurance: 500,
+      carInsurance: 600,
       electric: 250,
       phone: 150,
       water: 150,
@@ -342,7 +370,7 @@
 
     // Initial Knoxville expenses (fixed)
     const knoxvilleExpenses = {
-      mortgage: 1585,
+      mortgage: 2300,
       foodGroceries: 2000,
       tesla1: 490,
       tesla2: 415,
@@ -536,6 +564,9 @@
       document.getElementById('wifeMonthlyIncome').textContent = `$${(incomeData.wifeMonthly).toLocaleString()}`;
       document.getElementById('knoxvilleTotalBills').textContent = `$${knoxvilleBills.toLocaleString()}`;
       document.getElementById('floridaTotalBills').textContent = `$${floridaBills.toLocaleString()}`;
+      // Update bills difference display
+      const billsDifference = floridaBills - knoxvilleBills;
+      document.getElementById('billsDifference').textContent = `$${billsDifference.toLocaleString()}`;
       // Update mortgage-to-income and bills-to-income ratios
       const grossMonthlyIncome = (yourIncome + wifeIncome) / 12;
       document.getElementById('knoxvilleMortgageRatio').textContent = `${calculateMortgageToIncomeRatio(knoxvilleExpenses.mortgage, grossMonthlyIncome)}%`;
