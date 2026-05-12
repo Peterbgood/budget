@@ -89,7 +89,7 @@ export default function App() {
     return (
       <div className="h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white">
         <Lock className="mb-6 text-blue-400" size={48} />
-        <h1 className="text-xl font-black mb-8 tracking-widest">ENTER PIN</h1>
+        
         <div className="flex gap-4 mb-12">
           {[0, 1, 2, 3].map(i => (
             <div key={i} className={`w-4 h-4 rounded-full border-2 border-blue-400 ${pinInput.length > i ? 'bg-blue-400' : 'bg-transparent'}`} />
