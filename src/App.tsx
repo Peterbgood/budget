@@ -2,11 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from "firebase/app";
 import { 
   getFirestore, collection, query, orderBy, onSnapshot, 
-  addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc 
+  addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc, writeBatch 
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-// Removed 'Plus' to fix the GitHub build error
-import { Trash2, Calendar, ReceiptText, Lock, PieChart, X } from 'lucide-react';
+import { Trash2, Calendar, ReceiptText, Lock, PieChart as PieIcon, X, Eraser } from 'lucide-react';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDubrSy5eJ__fMycwDqGILFHRH1p8jMv-Y",
@@ -22,14 +21,6 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-interface Expense {
-  id: string;
-  category: string;
-  amount: number;
-  date: string;
-  notes?: string;
-}
-
 const CATEGORIES = [
   'Walmart', 'Chick-fil-A', 'McDonald\'s', "Salsarita's", 
   'Food City', 'Target', 'Publix', 'Panda Express', 
@@ -39,7 +30,7 @@ const CATEGORIES = [
 const PIN = "3270";
 
 export default function App() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
   const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -52,19 +43,34 @@ export default function App() {
     });
     const q = query(collection(db, 'expenses'), orderBy('date', 'desc'));
     const unsubExpenses = onSnapshot(q, (snapshot) => {
-      setExpenses(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Expense)));
+      setExpenses(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });
     return () => { unsubBudget(); unsubExpenses(); };
   }, []);
 
+  // Desktop Keyboard Support
   useEffect(() => {
-    if (pinInput === PIN) {
-      setIsUnlocked(true);
-    } else if (pinInput.length >= 4) {
-      setPinInput("");
-    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isUnlocked) return;
+      if (/^[0-9]$/.test(e.key)) setPinInput(prev => prev + e.key);
+      if (e.key === "Backspace") setPinInput(prev => prev.slice(0, -1));
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isUnlocked]);
+
+  useEffect(() => {
+    if (pinInput === PIN) setIsUnlocked(true);
+    else if (pinInput.length >= 4) setTimeout(() => setPinInput(""), 300);
   }, [pinInput]);
+
+  const handleClearAll = async () => {
+    if (!window.confirm("Delete all transactions?")) return;
+    const batch = writeBatch(db);
+    expenses.forEach(exp => batch.delete(doc(db, 'expenses', exp.id)));
+    await batch.commit();
+  };
 
   const totalSpent = useMemo(() => expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0), [expenses]);
   const remaining = monthlyBudget - totalSpent;
@@ -83,14 +89,13 @@ export default function App() {
     return (
       <div className="h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white">
         <Lock className="mb-6 text-blue-400" size={48} />
-        {/* Changed to text-white for visibility */}
-        <h1 className="text-xl font-black mb-8 tracking-widest text-white">ENTER PIN</h1>
+        <h1 className="text-xl font-black mb-8 tracking-widest">ENTER PIN</h1>
         <div className="flex gap-4 mb-12">
           {[0, 1, 2, 3].map(i => (
             <div key={i} className={`w-4 h-4 rounded-full border-2 border-blue-400 ${pinInput.length > i ? 'bg-blue-400' : 'bg-transparent'}`} />
           ))}
         </div>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-6 select-none">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
             <button key={n} onClick={() => setPinInput(prev => prev + n)} className="w-16 h-16 rounded-full bg-slate-800 text-2xl font-bold active:bg-blue-600 transition-colors">{n}</button>
           ))}
@@ -105,10 +110,10 @@ export default function App() {
   if (loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400 uppercase tracking-widest">Syncing...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-12">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
       <div className="sticky top-0 z-30 bg-slate-50/90 backdrop-blur-md px-4 pt-6 pb-2">
         <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-xl p-6 border border-white">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-6">
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Budget</p>
               <input type="number" className="text-2xl font-black focus:outline-none w-32" value={monthlyBudget || ''} onChange={(e) => setDoc(doc(db, 'budgets', 'main_config'), { monthlyBudget: Number(e.target.value) }, { merge: true })} />
@@ -119,18 +124,32 @@ export default function App() {
             </div>
           </div>
           
+          {/* Interactive Distribution Bar with Hover Info */}
           <div className="mt-4">
-             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-               <PieChart size={10} /> Distribution
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1">
+               <PieIcon size={12} /> Visual Breakdown (Hover/Tap)
              </p>
-             <div className="flex h-4 w-full rounded-full overflow-hidden bg-slate-100">
+             <div className="flex h-8 w-full rounded-xl overflow-hidden bg-slate-100 shadow-inner">
                {chartData.map(([cat, val], i) => (
                  <div 
                    key={cat} 
                    style={{ width: `${(val / totalSpent) * 100}%` }} 
-                   className={`${['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500'][i % 6]}`}
-                 />
+                   className={`${['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500'][i % 6]} transition-all hover:opacity-80 group relative cursor-pointer flex items-center justify-center`}
+                 >
+                    {/* Hover Tooltip */}
+                    <div className="absolute bottom-full mb-2 hidden group-hover:block bg-slate-800 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50 shadow-lg">
+                      {cat}: ${Number(val).toFixed(2)}
+                    </div>
+                 </div>
                ))}
+             </div>
+             <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4">
+                {chartData.map(([cat, val], i) => (
+                  <div key={cat} className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 uppercase">
+                    <div className={`w-2.5 h-2.5 rounded-full ${['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500'][i % 6]}`} />
+                    {cat} <span className="text-slate-300 ml-0.5">${Number(val).toFixed(0)}</span>
+                  </div>
+                ))}
              </div>
           </div>
         </div>
@@ -168,6 +187,13 @@ export default function App() {
             </div>
           ))}
         </div>
+
+        <button 
+          onClick={handleClearAll} 
+          className="w-full py-4 bg-red-50 text-red-600 rounded-2xl border border-red-100 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 mt-12 mb-8 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+        >
+          <Eraser size={14}/> Clear All Transactions
+        </button>
       </main>
     </div>
   );
