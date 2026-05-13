@@ -38,12 +38,9 @@ export default function App() {
 
   useEffect(() => {
     signInAnonymously(auth).catch(console.error);
-    const unsubBudget = onSnapshot(doc(db, 'budgets', 'main_config'), (snap) => {
-      if (snap.exists()) setMonthlyBudget(snap.data().monthlyBudget);
-    });
-    return () => unsubBudget();
   }, []);
 
+  // Strict PIN check logic
   useEffect(() => {
     if (pinInput.length === 4) {
       if (pinInput === APP_PIN) {
@@ -55,6 +52,7 @@ export default function App() {
     }
   }, [pinInput]);
 
+  // Keyboard support
   useEffect(() => {
     if (isAuthenticated) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -69,17 +67,31 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [pinInput, isAuthenticated]);
 
+  // Unified Data Listener (Budget + Expenses)
   useEffect(() => {
     if (!isAuthenticated) return;
+
+    // Listen for Budget
+    const unsubBudget = onSnapshot(doc(db, 'budgets', 'main_config'), (snap) => {
+      if (snap.exists()) {
+        setMonthlyBudget(snap.data().monthlyBudget || 0);
+      }
+    });
+
+    // Listen for Expenses
     const q = query(collection(db, 'expenses'), orderBy('date', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubExpenses = onSnapshot(q, (snapshot) => {
       setExpenses(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
     }, (error) => {
         console.error("Firebase error:", error);
         setLoading(false);
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubBudget();
+      unsubExpenses();
+    };
   }, [isAuthenticated]);
 
   const handleClearAll = async () => {
@@ -137,7 +149,16 @@ export default function App() {
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Budget</p>
               <div className="flex items-center gap-1">
                 <span className="text-xl font-black text-slate-300">$</span>
-                <input type="number" className="text-2xl font-black focus:outline-none w-32 bg-transparent" value={monthlyBudget || ''} onChange={(e) => setDoc(doc(db, 'budgets', 'main_config'), { monthlyBudget: Number(e.target.value) }, { merge: true })} />
+                <input 
+                  type="number" 
+                  className="text-2xl font-black focus:outline-none w-32 bg-transparent" 
+                  value={monthlyBudget || ''} 
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setMonthlyBudget(val);
+                    setDoc(doc(db, 'budgets', 'main_config'), { monthlyBudget: val }, { merge: true });
+                  }} 
+                />
               </div>
             </div>
             <div className="text-right">
@@ -158,7 +179,6 @@ export default function App() {
                ))}
              </div>
              
-             {/* Legend with Category Totals */}
              <div className="flex flex-wrap gap-x-4 gap-y-2">
                 {chartData.map(([cat, val], i) => (
                   <div key={cat} className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 uppercase">
