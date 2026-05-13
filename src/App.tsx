@@ -7,6 +7,15 @@ import {
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { Trash2, Calendar, ReceiptText, Lock, PieChart as PieIcon, X, Eraser } from 'lucide-react';
 
+// Define the interface to prevent build errors
+interface Expense {
+  id: string;
+  category: string;
+  amount: number;
+  date: string;
+  createdAt: any;
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyDubrSy5eJ__fMycwDqGILFHRH1p8jMv-Y",
   authDomain: "budget-6a317.firebaseapp.com",
@@ -30,7 +39,7 @@ const CATEGORIES = [
 const APP_PIN = "3270";
 
 export default function App() {
-  const [expenses, setExpenses] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]); // Correctly typed state
   const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -74,6 +83,7 @@ export default function App() {
       }
     });
 
+    // Composite query for strict ordering
     const q = query(
       collection(db, 'expenses'), 
       orderBy('date', 'desc'), 
@@ -83,13 +93,15 @@ export default function App() {
     const unsubExpenses = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(d => ({ 
         id: d.id, 
-        ...d.data(),
-        createdAt: d.data().createdAt?.toMillis ? d.data().createdAt.toMillis() : Date.now()
-      }));
+        ...d.data() 
+      })) as Expense[];
 
+      // Manual frontend sort as a backup to the Firebase index
       const sortedData = data.sort((a, b) => {
         if (b.date !== a.date) return b.date.localeCompare(a.date);
-        return b.createdAt - a.createdAt;
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : Date.now();
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : Date.now();
+        return timeB - timeA;
       });
 
       setExpenses(sortedData);
