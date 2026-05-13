@@ -40,7 +40,6 @@ export default function App() {
     signInAnonymously(auth).catch(console.error);
   }, []);
 
-  // Strict PIN check logic
   useEffect(() => {
     if (pinInput.length === 4) {
       if (pinInput === APP_PIN) {
@@ -52,7 +51,6 @@ export default function App() {
     }
   }, [pinInput]);
 
-  // Keyboard support
   useEffect(() => {
     if (isAuthenticated) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -67,24 +65,37 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [pinInput, isAuthenticated]);
 
-  // Unified Data Listener (Budget + Expenses)
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Listen for Budget
     const unsubBudget = onSnapshot(doc(db, 'budgets', 'main_config'), (snap) => {
       if (snap.exists()) {
         setMonthlyBudget(snap.data().monthlyBudget || 0);
       }
     });
 
-    // Listen for Expenses
-    const q = query(collection(db, 'expenses'), orderBy('date', 'desc'));
+    const q = query(
+      collection(db, 'expenses'), 
+      orderBy('date', 'desc'), 
+      orderBy('createdAt', 'desc')
+    );
+
     const unsubExpenses = onSnapshot(q, (snapshot) => {
-      setExpenses(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      const data = snapshot.docs.map(d => ({ 
+        id: d.id, 
+        ...d.data(),
+        createdAt: d.data().createdAt?.toMillis ? d.data().createdAt.toMillis() : Date.now()
+      }));
+
+      const sortedData = data.sort((a, b) => {
+        if (b.date !== a.date) return b.date.localeCompare(a.date);
+        return b.createdAt - a.createdAt;
+      });
+
+      setExpenses(sortedData);
       setLoading(false);
     }, (error) => {
-        console.error("Firebase error:", error);
+        console.error("Firebase Query Error:", error);
         setLoading(false);
     });
 
@@ -194,7 +205,18 @@ export default function App() {
       <main className="max-w-xl mx-auto px-4 mt-8">
         <div className="grid grid-cols-3 gap-2 mb-8">
           {CATEGORIES.map(cat => (
-            <button key={cat} onClick={() => addDoc(collection(db, 'expenses'), { category: cat, amount: 0, date: new Date().toISOString().split('T')[0], createdAt: serverTimestamp() })} className="py-3 px-1 bg-white border border-slate-100 rounded-2xl text-[10px] font-black text-slate-700 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate">+ {cat}</button>
+            <button 
+              key={cat} 
+              onClick={() => addDoc(collection(db, 'expenses'), { 
+                category: cat, 
+                amount: 0, 
+                date: new Date().toISOString().split('T')[0], 
+                createdAt: serverTimestamp() 
+              })} 
+              className="py-3 px-1 bg-white border border-slate-100 rounded-2xl text-[10px] font-black text-slate-700 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate"
+            >
+              + {cat}
+            </button>
           ))}
         </div>
 
