@@ -7,7 +7,6 @@ import {
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { Trash2, Calendar, ReceiptText, Lock, PieChart as PieIcon, X, Eraser } from 'lucide-react';
 
-// Define the interface to prevent build errors
 interface Expense {
   id: string;
   category: string;
@@ -39,7 +38,7 @@ const CATEGORIES = [
 const APP_PIN = "3270";
 
 export default function App() {
-  const [expenses, setExpenses] = useState<Expense[]>([]); // Correctly typed state
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -83,7 +82,6 @@ export default function App() {
       }
     });
 
-    // Composite query for strict ordering
     const q = query(
       collection(db, 'expenses'), 
       orderBy('date', 'desc'), 
@@ -96,7 +94,6 @@ export default function App() {
         ...d.data() 
       })) as Expense[];
 
-      // Manual frontend sort as a backup to the Firebase index
       const sortedData = data.sort((a, b) => {
         if (b.date !== a.date) return b.date.localeCompare(a.date);
         const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : Date.now();
@@ -167,14 +164,14 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
       <div className="sticky top-0 z-30 bg-slate-50/90 backdrop-blur-md px-4 pt-6 pb-2">
         <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-xl p-6 border border-white">
-          <div className="flex justify-between items-center mb-6">
+          <div className="grid grid-cols-3 gap-4 mb-6">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Budget</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Budget</p>
               <div className="flex items-center gap-1">
                 <span className="text-xl font-black text-slate-300">$</span>
                 <input 
                   type="number" 
-                  className="text-2xl font-black focus:outline-none w-32 bg-transparent" 
+                  className="text-2xl font-black focus:outline-none w-full bg-transparent" 
                   value={monthlyBudget || ''} 
                   onChange={(e) => {
                     const val = Number(e.target.value);
@@ -183,6 +180,10 @@ export default function App() {
                   }} 
                 />
               </div>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Spent</p>
+              <p className="text-2xl font-black text-slate-800">${totalSpent.toFixed(2)}</p>
             </div>
             <div className="text-right">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Remaining</p>
