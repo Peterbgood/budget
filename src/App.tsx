@@ -27,13 +27,13 @@ const CATEGORIES = [
   'Freddy\'s', 'Starbucks', 'Taco Bell', 'Dunkin', 'Gas', 'Misc'
 ];
 
-const PIN = "3270";
+const APP_PIN = "3270";
 
 export default function App() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
   const [loading, setLoading] = useState(true);
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pinInput, setPinInput] = useState("");
 
   useEffect(() => {
@@ -41,29 +41,46 @@ export default function App() {
     const unsubBudget = onSnapshot(doc(db, 'budgets', 'main_config'), (snap) => {
       if (snap.exists()) setMonthlyBudget(snap.data().monthlyBudget);
     });
-    const q = query(collection(db, 'expenses'), orderBy('date', 'desc'));
-    const unsubExpenses = onSnapshot(q, (snapshot) => {
-      setExpenses(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    });
-    return () => { unsubBudget(); unsubExpenses(); };
+    return () => unsubBudget();
   }, []);
 
-  // Desktop Keyboard Support
   useEffect(() => {
+    if (pinInput.length === 4) {
+      if (pinInput === APP_PIN) {
+        setIsAuthenticated(true);
+      } else {
+        const timer = setTimeout(() => setPinInput(''), 400);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [pinInput]);
+
+  useEffect(() => {
+    if (isAuthenticated) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isUnlocked) return;
-      if (/^[0-9]$/.test(e.key)) setPinInput(prev => prev + e.key);
-      if (e.key === "Backspace") setPinInput(prev => prev.slice(0, -1));
+      if (e.key >= '0' && e.key <= '9') { 
+        if (pinInput.length < 4) setPinInput(prev => prev + e.key); 
+      }
+      else if (e.key === 'Backspace') { 
+        setPinInput(prev => prev.slice(0, -1)); 
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isUnlocked]);
+  }, [pinInput, isAuthenticated]);
 
   useEffect(() => {
-    if (pinInput === PIN) setIsUnlocked(true);
-    else if (pinInput.length >= 4) setTimeout(() => setPinInput(""), 300);
-  }, [pinInput]);
+    if (!isAuthenticated) return;
+    const q = query(collection(db, 'expenses'), orderBy('date', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setExpenses(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    }, (error) => {
+        console.error("Firebase error:", error);
+        setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [isAuthenticated]);
 
   const handleClearAll = async () => {
     if (!window.confirm("Delete all transactions?")) return;
@@ -85,29 +102,51 @@ export default function App() {
       .sort((a, b) => b[1] - a[1]);
   }, [expenses]);
 
-  if (!isUnlocked) {
+  if (!isAuthenticated) {
     return (
-      <div className="h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white">
-        <Lock className="mb-6 text-blue-400" size={48} />
-        
-        <div className="flex gap-4 mb-12">
-          {[0, 1, 2, 3].map(i => (
-            <div key={i} className={`w-4 h-4 rounded-full border-2 border-blue-400 ${pinInput.length > i ? 'bg-blue-400' : 'bg-transparent'}`} />
-          ))}
-        </div>
-        <div className="grid grid-cols-3 gap-6 select-none">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-            <button key={n} onClick={() => setPinInput(prev => prev + n)} className="w-16 h-16 rounded-full bg-slate-800 text-2xl font-bold active:bg-blue-600 transition-colors">{n}</button>
-          ))}
-          <div />
-          <button onClick={() => setPinInput(prev => prev + "0")} className="w-16 h-16 rounded-full bg-slate-800 text-2xl font-bold active:bg-blue-600 transition-colors">0</button>
-          <button onClick={() => setPinInput("")} className="w-16 h-16 flex items-center justify-center text-slate-500"><X /></button>
+      <div className="h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-slate-900">
+        <div className="bg-white p-8 rounded-[40px] shadow-2xl border border-white flex flex-col items-center">
+          <Lock className="mb-6 text-blue-500" size={40} />
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8">Enter Secure PIN</p>
+          
+          <div className="flex gap-4 mb-12">
+            {[0, 1, 2, 3].map(i => (
+              <div 
+                key={i} 
+                className={`w-3.5 h-3.5 rounded-full border-2 transition-all duration-200 ${
+                  pinInput.length > i ? 'bg-blue-500 border-blue-500 scale-110' : 'bg-transparent border-slate-200'
+                } ${pinInput.length === 4 && pinInput !== APP_PIN ? 'border-red-500 bg-red-500 animate-pulse' : ''}`} 
+              />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 select-none">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+              <button 
+                key={n} 
+                onClick={() => pinInput.length < 4 && setPinInput(prev => prev + n)} 
+                className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 text-xl font-black text-slate-700 active:bg-blue-500 active:text-white active:scale-95 transition-all shadow-sm"
+              >
+                {n}
+              </button>
+            ))}
+            <div />
+            <button 
+              onClick={() => pinInput.length < 4 && setPinInput(prev => prev + "0")} 
+              className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 text-xl font-black text-slate-700 active:bg-blue-500 active:text-white active:scale-95 transition-all shadow-sm"
+            >
+              0
+            </button>
+            <button onClick={() => setPinInput("")} className="w-16 h-16 flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors">
+              <X size={24}/>
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400 uppercase tracking-widest">Syncing...</div>;
+  if (loading) return <div className="h-screen bg-slate-50 flex items-center justify-center font-black text-slate-300 uppercase tracking-widest">Syncing...</div>;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
@@ -116,19 +155,25 @@ export default function App() {
           <div className="flex justify-between items-center mb-6">
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Budget</p>
-              <input type="number" className="text-2xl font-black focus:outline-none w-32" value={monthlyBudget || ''} onChange={(e) => setDoc(doc(db, 'budgets', 'main_config'), { monthlyBudget: Number(e.target.value) }, { merge: true })} />
+              <div className="flex items-center gap-1">
+                <span className="text-xl font-black text-slate-300">$</span>
+                <input 
+                  type="number" 
+                  className="text-2xl font-black focus:outline-none w-32 bg-transparent" 
+                  value={monthlyBudget || ''} 
+                  onChange={(e) => setDoc(doc(db, 'budgets', 'main_config'), { monthlyBudget: Number(e.target.value) }, { merge: true })} 
+                />
+              </div>
             </div>
             <div className="text-right">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Remaining</p>
-              <p className={`text-2xl font-black ${remaining < 0 ? 'text-red-500' : 'text-emerald-500'}`}>${remaining.toFixed(2)}</p>
+              <p className={`text-2xl font-black ${remaining < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                ${remaining.toFixed(2)}
+              </p>
             </div>
           </div>
           
-          {/* Interactive Distribution Bar with Hover Info */}
           <div className="mt-4">
-             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1">
-               <PieIcon size={12} /> Visual Breakdown (Hover/Tap)
-             </p>
              <div className="flex h-8 w-full rounded-xl overflow-hidden bg-slate-100 shadow-inner">
                {chartData.map(([cat, val], i) => (
                  <div 
@@ -136,7 +181,6 @@ export default function App() {
                    style={{ width: `${(val / totalSpent) * 100}%` }} 
                    className={`${['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500'][i % 6]} transition-all hover:opacity-80 group relative cursor-pointer flex items-center justify-center`}
                  >
-                    {/* Hover Tooltip */}
                     <div className="absolute bottom-full mb-2 hidden group-hover:block bg-slate-800 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50 shadow-lg">
                       {cat}: ${Number(val).toFixed(2)}
                     </div>
@@ -146,7 +190,7 @@ export default function App() {
              <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4">
                 {chartData.map(([cat, val], i) => (
                   <div key={cat} className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 uppercase">
-                    <div className={`w-2.5 h-2.5 rounded-full ${['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500'][i % 6]}`} />
+                    <div className={`w-2 h-2 rounded-full ${['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500'][i % 6]}`} />
                     {cat} <span className="text-slate-300 ml-0.5">${Number(val).toFixed(0)}</span>
                   </div>
                 ))}
@@ -158,30 +202,57 @@ export default function App() {
       <main className="max-w-xl mx-auto px-4 mt-8">
         <div className="grid grid-cols-3 gap-2 mb-8">
           {CATEGORIES.map(cat => (
-            <button key={cat} onClick={() => addDoc(collection(db, 'expenses'), { category: cat, amount: 0, date: new Date().toISOString().split('T')[0], createdAt: serverTimestamp() })} className="py-3 px-1 bg-white border border-slate-200 rounded-2xl text-[10px] font-black text-slate-700 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate">
+            <button 
+              key={cat} 
+              onClick={() => addDoc(collection(db, 'expenses'), { 
+                category: cat, 
+                amount: 0, 
+                date: new Date().toISOString().split('T')[0], 
+                createdAt: serverTimestamp() 
+              })} 
+              className="py-3 px-1 bg-white border border-slate-100 rounded-2xl text-[10px] font-black text-slate-700 shadow-sm active:bg-blue-600 active:text-white active:border-blue-600 transition-all uppercase truncate"
+            >
               + {cat}
             </button>
           ))}
         </div>
 
         <div className="space-y-3">
-          <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><ReceiptText size={12}/> History</h2>
+          <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+            <ReceiptText size={12}/> History
+          </h2>
           {expenses.map(exp => (
             <div key={exp.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between mb-1">
-                  <input className="font-black text-slate-800 bg-transparent focus:outline-none w-full" value={exp.category} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { category: e.target.value })} />
+                  <input 
+                    className="font-black text-slate-800 bg-transparent focus:outline-none w-full" 
+                    value={exp.category} 
+                    onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { category: e.target.value })} 
+                  />
                   <div className="flex items-center text-blue-600 font-black">
                     <span className="text-sm mr-0.5">$</span>
-                    <input type="number" className="w-16 text-right bg-transparent focus:outline-none" value={exp.amount || ''} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { amount: Number(e.target.value) })} />
+                    <input 
+                      type="number" 
+                      className="w-16 text-right bg-transparent focus:outline-none" 
+                      value={exp.amount || ''} 
+                      onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { amount: Number(e.target.value) })} 
+                    />
                   </div>
                 </div>
                 <div className="flex justify-between text-slate-400">
                   <div className="flex items-center gap-1">
                     <Calendar size={12} />
-                    <input type="date" className="text-[10px] bg-transparent focus:outline-none font-bold uppercase" value={exp.date} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { date: e.target.value })} />
+                    <input 
+                      type="date" 
+                      className="text-[10px] bg-transparent focus:outline-none font-bold uppercase" 
+                      value={exp.date} 
+                      onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { date: e.target.value })} 
+                    />
                   </div>
-                  <button onClick={() => deleteDoc(doc(db, 'expenses', exp.id))} className="text-slate-200 hover:text-red-400"><Trash2 size={16} /></button>
+                  <button onClick={() => deleteDoc(doc(db, 'expenses', exp.id))} className="text-slate-200 hover:text-red-400 transition-colors">
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
             </div>
