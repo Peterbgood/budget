@@ -43,6 +43,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pinInput, setPinInput] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<{ name: string; amount: number } | null>(null);
 
   useEffect(() => {
     signInAnonymously(auth).catch(console.error);
@@ -162,16 +163,27 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
-      <div className="sticky top-0 z-30 bg-slate-50/90 backdrop-blur-md px-4 pt-6 pb-2">
+      {/* Standard, non-sticky container layout */}
+      <div className="px-4 pt-6 mb-6">
         <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-xl p-6 border border-white">
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div>
+          
+          {/* Centered Remaining Balance */}
+          <div className="text-center mb-6">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Remaining</p>
+            <p className={`text-4xl font-black ${remaining < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+              ${remaining.toFixed(0)}
+            </p>
+          </div>
+
+          {/* Budget and Spent Side-by-Side Below */}
+          <div className="grid grid-cols-2 gap-4 mb-6 border-t border-slate-100 pt-4">
+            <div className="text-center border-r border-slate-100">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Budget</p>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center justify-center gap-1">
                 <span className="text-xl font-black text-slate-300">$</span>
                 <input 
                   type="number" 
-                  className="text-2xl font-black focus:outline-none w-full bg-transparent" 
+                  className="text-2xl font-black focus:outline-none w-24 bg-transparent text-center" 
                   value={monthlyBudget || ''} 
                   onChange={(e) => {
                     const val = Number(e.target.value);
@@ -183,11 +195,7 @@ export default function App() {
             </div>
             <div className="text-center">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Spent</p>
-              <p className="text-2xl font-black text-slate-800">${totalSpent.toFixed(2)}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Remaining</p>
-              <p className={`text-2xl font-black ${remaining < 0 ? 'text-red-500' : 'text-emerald-500'}`}>${remaining.toFixed(2)}</p>
+              <p className="text-2xl font-black text-slate-800">${totalSpent.toFixed(0)}</p>
             </div>
           </div>
           
@@ -197,11 +205,38 @@ export default function App() {
              </p>
              <div className="flex h-8 w-full rounded-xl overflow-hidden bg-slate-100 shadow-inner mb-4">
                {chartData.map(([cat, val], i) => (
-                 <div key={cat} style={{ width: `${(val / totalSpent) * 100}%` }} className={`${['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500'][i % 6]} transition-all hover:opacity-80 group relative cursor-pointer`}>
-                    <div className="absolute bottom-full mb-2 hidden group-hover:block bg-slate-800 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50 shadow-lg">{cat}: ${Number(val).toFixed(2)}</div>
+                 <div 
+                   key={cat} 
+                   style={{ width: `${(val / totalSpent) * 100}%` }} 
+                   className={`${['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500'][i % 6]} transition-all hover:opacity-80 group relative cursor-pointer`}
+                   onClick={() => {
+                     if (selectedCategory?.name === cat) {
+                       setSelectedCategory(null);
+                     } else {
+                       setSelectedCategory({ name: cat, amount: Number(val) });
+                     }
+                   }}
+                 >
+                    <div className="absolute bottom-full mb-2 hidden group-hover:block bg-slate-800 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50 shadow-lg">
+                      {cat}: ${Number(val).toFixed(0)}
+                    </div>
                  </div>
                ))}
              </div>
+
+             {/* Inline detail display area below the bar when segment is clicked */}
+             {selectedCategory && (
+               <div className="mb-4 p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between animate-fadeIn">
+                 <div className="text-[11px] font-black uppercase text-slate-600 tracking-wider flex items-center gap-2">
+                   <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                   Selected: <span className="text-slate-900">{selectedCategory.name}</span>
+                 </div>
+                 <div className="flex items-center gap-3">
+                   <span className="text-sm font-black text-blue-600">${selectedCategory.amount.toFixed(0)}</span>
+                   <button onClick={() => setSelectedCategory(null)} className="text-slate-400 hover:text-slate-600"><X size={14}/></button>
+                 </div>
+               </div>
+             )}
              
              <div className="flex flex-wrap gap-x-4 gap-y-2">
                 {chartData.map(([cat, val], i) => (
