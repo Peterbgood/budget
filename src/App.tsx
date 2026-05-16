@@ -5,7 +5,7 @@ import {
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc, writeBatch 
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { Trash2, Calendar, ReceiptText, Lock, PieChart as PieIcon, X, Eraser } from 'lucide-react';
+import { Trash2, Calendar, ReceiptText, Lock, PieChart as PieIcon, X, Eraser, Download } from 'lucide-react';
 
 interface Expense {
   id: string;
@@ -32,7 +32,7 @@ const auth = getAuth(app);
 const CATEGORIES = [
   'Walmart', 'Chick-fil-A', 'McDonald\'s', "Salsarita's", 
   'Food City', 'Target', 'Publix', 'Panda Express', 
-  'Freddy\'s', 'Starbucks', 'Taco Bell', 'Dunkin', 'Gas', 'Misc'
+  'Freddy\'s', 'Starbucks', 'Taco Bell', 'Dunkin', 'Amazon', 'Gas', 'Misc'
 ];
 
 const APP_PIN = "3270";
@@ -122,18 +122,47 @@ export default function App() {
     await batch.commit();
   };
 
+  const handleExportCSV = () => {
+    if (expenses.length === 0) {
+      window.alert("No transactions to export.");
+      return;
+    }
+    
+    const headers = ["Date", "Category", "Amount ($)"];
+    const rows = expenses.map(exp => [
+      exp.date,
+      `"${exp.category.replace(/"/g, '""')}"`,
+      exp.amount.toFixed(2)
+    ]);
+    
+    const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `expenses_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const totalSpent = useMemo(() => expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0), [expenses]);
   const remaining = monthlyBudget - totalSpent;
 
-  const chartData = useMemo(() => {
-    const totals: Record<string, number> = {};
+  const categoryTotalsMap = useMemo(() => {
+    const map: Record<string, number> = {};
     expenses.forEach(e => {
-      totals[e.category] = (totals[e.category] || 0) + (Number(e.amount) || 0);
+      map[e.category] = (map[e.category] || 0) + (Number(e.amount) || 0);
     });
-    return Object.entries(totals)
+    return map;
+  }, [expenses]);
+
+  const chartData = useMemo(() => {
+    return Object.entries(categoryTotalsMap)
       .filter(([_, value]) => value > 0)
       .sort((a, b) => b[1] - a[1]);
-  }, [expenses]);
+  }, [categoryTotalsMap]);
 
   if (!isAuthenticated) {
     return (
@@ -163,11 +192,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
-      {/* Standard, non-sticky container layout */}
       <div className="px-4 pt-6 mb-6">
         <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-xl p-6 border border-white">
           
-          {/* Centered Remaining Balance */}
           <div className="text-center mb-6">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Remaining</p>
             <p className={`text-4xl font-black ${remaining < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
@@ -175,7 +202,6 @@ export default function App() {
             </p>
           </div>
 
-          {/* Budget and Spent Side-by-Side Below */}
           <div className="grid grid-cols-2 gap-4 mb-6 border-t border-slate-100 pt-4">
             <div className="text-center border-r border-slate-100">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Budget</p>
@@ -224,7 +250,6 @@ export default function App() {
                ))}
              </div>
 
-             {/* Inline detail display area below the bar when segment is clicked */}
              {selectedCategory && (
                <div className="mb-4 p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between animate-fadeIn">
                  <div className="text-[11px] font-black uppercase text-slate-600 tracking-wider flex items-center gap-2">
@@ -251,21 +276,26 @@ export default function App() {
       </div>
 
       <main className="max-w-xl mx-auto px-4 mt-8">
-        <div className="grid grid-cols-3 gap-2 mb-8">
-          {CATEGORIES.map(cat => (
-            <button 
-              key={cat} 
-              onClick={() => addDoc(collection(db, 'expenses'), { 
-                category: cat, 
-                amount: 0, 
-                date: new Date().toISOString().split('T')[0], 
-                createdAt: serverTimestamp() 
-              })} 
-              className="py-3 px-1 bg-white border border-slate-100 rounded-2xl text-[10px] font-black text-slate-700 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate"
-            >
-              + {cat}
-            </button>
-          ))}
+        {/* Quick buttons optimized into a tighter row display with inline text */}
+        <div className="grid grid-cols-3 gap-1.5 mb-8">
+          {CATEGORIES.map(cat => {
+            const catTotal = categoryTotalsMap[cat] || 0;
+            return (
+              <button 
+                key={cat} 
+                onClick={() => addDoc(collection(db, 'expenses'), { 
+                  category: cat, 
+                  amount: 0, 
+                  date: new Date().toISOString().split('T')[0], 
+                  createdAt: serverTimestamp() 
+                })} 
+                className="py-2 px-2 bg-white border border-slate-100 rounded-xl text-[10px] font-black text-slate-700 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate flex items-center justify-center gap-1"
+              >
+                <span className="truncate">+ {cat}</span>
+                {catTotal > 0 && <span className="text-slate-400 font-bold shrink-0">(${catTotal.toFixed(0)})</span>}
+              </button>
+            );
+          })}
         </div>
 
         <div className="space-y-3">
@@ -292,7 +322,21 @@ export default function App() {
           ))}
         </div>
 
-        <button onClick={handleClearAll} className="w-full py-4 bg-red-50 text-red-600 rounded-2xl border border-red-100 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 mt-12 mb-8 hover:bg-red-600 hover:text-white transition-all shadow-sm"><Eraser size={14}/> Clear All Transactions</button>
+        <div className="mt-12 mb-8 space-y-3">
+          <button 
+            onClick={handleClearAll} 
+            className="w-full py-4 bg-red-50 text-red-600 rounded-2xl border border-red-100 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+          >
+            <Eraser size={14}/> Clear All Transactions
+          </button>
+          
+          <button 
+            onClick={handleExportCSV} 
+            className="w-full py-4 bg-slate-100 text-slate-700 rounded-2xl border border-slate-200 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 transition-all shadow-sm"
+          >
+            <Download size={14}/> Export to CSV
+          </button>
+        </div>
       </main>
     </div>
   );
