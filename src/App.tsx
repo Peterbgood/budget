@@ -44,6 +44,9 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<{ name: string; amount: number } | null>(null);
+  
+  // Track selected lines for the calculator pop-up
+  const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
 
   useEffect(() => {
     signInAnonymously(auth).catch(console.error);
@@ -97,9 +100,16 @@ export default function App() {
 
       const sortedData = data.sort((a, b) => {
         if (b.date !== a.date) return b.date.localeCompare(a.date);
-        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : Date.now();
-        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : Date.now();
-        return timeB - timeA;
+        
+        // Dynamic fallback logic to fix layout anchoring issues while typing
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : null;
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : null;
+        
+        if (timeA !== null && timeB !== null) {
+          return timeB - timeA;
+        }
+        // Fallback safely to stable ID sort sequence if server tokens are pending
+        return b.id.localeCompare(a.id);
       });
 
       setExpenses(sortedData);
@@ -120,6 +130,7 @@ export default function App() {
     const batch = writeBatch(db);
     expenses.forEach(exp => batch.delete(doc(db, 'expenses', exp.id)));
     await batch.commit();
+    setSelectedExpenseIds([]);
   };
 
   const handleExportCSV = () => {
@@ -164,6 +175,18 @@ export default function App() {
       .sort((a, b) => b[1] - a[1]);
   }, [categoryTotalsMap]);
 
+  const handleToggleSelectExpense = (id: string) => {
+    setSelectedExpenseIds(prev => 
+      prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
+    );
+  };
+
+  const selectedLinesTotal = useMemo(() => {
+    return expenses
+      .filter(e => selectedExpenseIds.includes(e.id))
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  }, [selectedExpenseIds, expenses]);
+
   if (!isAuthenticated) {
     return (
       <div className="h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-slate-900">
@@ -191,7 +214,7 @@ export default function App() {
   if (loading) return <div className="h-screen bg-slate-50 flex items-center justify-center font-black text-slate-300 uppercase tracking-widest">Syncing...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-32">
       <div className="px-4 pt-6 mb-6">
         <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-xl p-6 border border-white">
           
@@ -276,7 +299,6 @@ export default function App() {
       </div>
 
       <main className="max-w-xl mx-auto px-4 mt-8">
-        {/* Quick buttons optimized into a tighter row display with inline text */}
         <div className="grid grid-cols-3 gap-1.5 mb-8">
           {CATEGORIES.map(cat => {
             const catTotal = categoryTotalsMap[cat] || 0;
@@ -300,26 +322,48 @@ export default function App() {
 
         <div className="space-y-3">
           <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><ReceiptText size={12}/> History</h2>
-          {expenses.map(exp => (
-            <div key={exp.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between mb-1">
-                  <input className="font-black text-slate-800 bg-transparent focus:outline-none w-full" value={exp.category} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { category: e.target.value })} />
-                  <div className="flex items-center text-blue-600 font-black">
-                    <span className="text-sm mr-0.5">$</span>
-                    <input type="number" className="w-16 text-right bg-transparent focus:outline-none" value={exp.amount || ''} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { amount: Number(e.target.value) })} />
+          {expenses.map(exp => {
+            const isSelected = selectedExpenseIds.includes(exp.id);
+            return (
+              <div 
+                key={exp.id} 
+                onClick={(e) => {
+                  // Only trigger selection calculation if clicking outside of interactive inputs/buttons
+                  const targetTagName = (e.target as HTMLElement).tagName.toLowerCase();
+                  if (targetTagName !== 'input' && targetTagName !== 'button' && !(e.target as HTMLElement).closest('button')) {
+                    handleToggleSelectExpense(exp.id);
+                  }
+                }}
+                className={`p-4 rounded-2xl border transition-all duration-150 flex items-center gap-4 shadow-sm select-none cursor-pointer ${
+                  isSelected 
+                    ? 'bg-blue-5/70 border-blue-200 ring-2 ring-blue-500/10' 
+                    : 'bg-white border-slate-100 hover:border-slate-200'
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between mb-1">
+                    <input className="font-black text-slate-800 bg-transparent focus:outline-none w-full" value={exp.category} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { category: e.target.value })} />
+                    <div className="flex items-center text-blue-600 font-black">
+                      <span className="text-sm mr-0.5">$</span>
+                      <input type="number" className="w-16 text-right bg-transparent focus:outline-none" value={exp.amount || ''} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { amount: Number(e.target.value) })} />
+                    </div>
                   </div>
-                </div>
-                <div className="flex justify-between text-slate-400">
-                  <div className="flex items-center gap-1">
-                    <Calendar size={12} />
-                    <input type="date" className="text-[10px] bg-transparent focus:outline-none font-bold uppercase" value={exp.date} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { date: e.target.value })} />
+                  <div className="flex justify-between text-slate-400">
+                    <div className="flex items-center gap-1">
+                      <Calendar size={12} />
+                      <input type="date" className="text-[10px] bg-transparent focus:outline-none font-bold uppercase" value={exp.date} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { date: e.target.value })} />
+                    </div>
+                    <button 
+                      onClick={() => deleteDoc(doc(db, 'expenses', exp.id))} 
+                      className="text-slate-200 hover:text-red-400"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
-                  <button onClick={() => deleteDoc(doc(db, 'expenses', exp.id))} className="text-slate-200 hover:text-red-400"><Trash2 size={16} /></button>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-12 mb-8 space-y-3">
@@ -338,6 +382,29 @@ export default function App() {
           </button>
         </div>
       </main>
+
+      {/* Floating total display pop-up when lines are selected */}
+      {selectedExpenseIds.length > 0 && (
+        <div className="fixed bottom-6 left-0 right-0 px-4 z-50 pointer-events-none flex justify-center animate-slideUp">
+          <div className="pointer-events-auto bg-slate-900/95 backdrop-blur text-white py-3.5 px-6 rounded-2xl shadow-2xl border border-slate-800 flex items-center justify-between gap-6 max-w-sm w-full">
+            <div className="flex flex-col">
+              <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
+                Selected ({selectedExpenseIds.length})
+              </span>
+              <span className="text-xl font-black text-emerald-400">
+                ${selectedLinesTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <button 
+              onClick={() => setSelectedExpenseIds([])} 
+              className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              title="Clear selection"
+            >
+              <X size={16} className="stroke-[2.5]" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
