@@ -5,7 +5,7 @@ import {
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc, writeBatch 
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { Trash2, Calendar, ReceiptText, Lock, PieChart as PieIcon, X, Eraser, Download } from 'lucide-react';
+import { Trash2, Calendar, ReceiptText, Lock, PieChart as PieIcon, X, Eraser, Download, Plus, Check } from 'lucide-react';
 
 interface Expense {
   id: string;
@@ -45,8 +45,11 @@ export default function App() {
   const [pinInput, setPinInput] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<{ name: string; amount: number } | null>(null);
   
-  // Track selected lines for the calculation pop-up
+  // Track selected lines for the calculator pop-up
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
+  
+  // Track which item is currently staging a delete confirmation
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   // Track the ID of a newly added item to auto-focus its amount field
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
@@ -127,13 +130,19 @@ export default function App() {
     };
   }, [isAuthenticated]);
 
-  // Hook to handle auto-anchoring focus onto a newly appended transaction row
+  // Reset delete staging state if user taps anywhere else on screen
+  useEffect(() => {
+    if (!deletingId) return;
+    const handleGlobalClick = () => setDeletingId(null);
+    window.addEventListener('pointerdown', handleGlobalClick);
+    return () => window.removeEventListener('pointerdown', handleGlobalClick);
+  }, [deletingId]);
+
   useEffect(() => {
     if (justAddedId && amountInputsRef.current[justAddedId]) {
       const targetInput = amountInputsRef.current[justAddedId];
       if (targetInput) {
         targetInput.focus();
-        // Soft timeout helps iOS Safari adjust scroll layout context cleanly
         setTimeout(() => {
           targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 80);
@@ -346,22 +355,30 @@ export default function App() {
           <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><ReceiptText size={12}/> History</h2>
           {expenses.map(exp => {
             const isSelected = selectedExpenseIds.includes(exp.id);
+            const isStagingDelete = deletingId === exp.id;
+            
             return (
               <div 
                 key={exp.id} 
-                onPointerDown={(e) => {
-                  // Using pointer event checks ensures instantaneous response across iOS Safari
-                  const targetTagName = (e.target as HTMLElement).tagName.toLowerCase();
-                  if (targetTagName !== 'input' && targetTagName !== 'button' && !(e.target as HTMLElement).closest('button')) {
-                    handleToggleSelectExpense(exp.id);
-                  }
-                }}
-                className={`p-4 rounded-2xl border transition-all duration-150 flex items-center gap-4 shadow-sm select-none touch-manipulation ${
+                className={`p-4 rounded-2xl border transition-all duration-150 flex items-center gap-3.5 shadow-sm select-none ${
                   isSelected 
                     ? 'bg-blue-5/70 border-blue-200 ring-2 ring-blue-500/10' 
                     : 'bg-white border-slate-100 hover:border-slate-200'
                 }`}
               >
+                {/* Small explicit select button instead of clicking the whole line item */}
+                <button
+                  type="button"
+                  onClick={() => handleToggleSelectExpense(exp.id)}
+                  className={`w-6 h-6 rounded-lg border transition-all flex items-center justify-center shrink-0 touch-manipulation ${
+                    isSelected 
+                      ? 'bg-blue-500 border-blue-500 text-white shadow-sm' 
+                      : 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300'
+                  }`}
+                >
+                  {isSelected ? <Check size={12} className="stroke-[3]" /> : <Plus size={12} className="stroke-[3]" />}
+                </button>
+
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between mb-1">
                     <input className="font-black text-slate-800 bg-transparent focus:outline-none w-full" value={exp.category} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { category: e.target.value })} />
@@ -376,17 +393,39 @@ export default function App() {
                       />
                     </div>
                   </div>
-                  <div className="flex justify-between text-slate-400">
+                  <div className="flex justify-between text-slate-400 items-center min-h-[24px]">
                     <div className="flex items-center gap-1">
                       <Calendar size={12} />
                       <input type="date" className="text-[10px] bg-transparent focus:outline-none font-bold uppercase" value={exp.date} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { date: e.target.value })} />
                     </div>
-                    <button 
-                      onClick={() => deleteDoc(doc(db, 'expenses', exp.id))} 
-                      className="text-slate-200 hover:text-red-400 p-1"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    
+                    {/* Inline conditional non-popup delete logic */}
+                    <div className="relative pointer-events-auto">
+                      {isStagingDelete ? (
+                        <button 
+                          type="button"
+                          onPointerDown={(e) => {
+                            e.stopPropagation(); // Stops parent or global dismissals from blocking execution
+                            deleteDoc(doc(db, 'expenses', exp.id));
+                            setDeletingId(null);
+                          }}
+                          className="bg-red-500 text-white text-[9px] font-black tracking-wider uppercase px-2.5 py-1 rounded-lg shadow-sm hover:bg-red-600 animate-fadeIn shrink-0 touch-manipulation"
+                        >
+                          CONFIRM?
+                        </button>
+                      ) : (
+                        <button 
+                          type="button"
+                          onPointerDown={(e) => {
+                            e.stopPropagation(); // Staging needs explicit focus containment
+                            setDeletingId(exp.id);
+                          }} 
+                          className="text-slate-200 hover:text-red-400 p-1 rounded transition-colors touch-manipulation"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
