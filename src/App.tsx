@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'; 
+import { useState, useEffect, useMemo, useRef } from 'react'; 
 import { initializeApp } from "firebase/app";
 import { 
   getFirestore, collection, query, orderBy, onSnapshot, 
@@ -45,8 +45,12 @@ export default function App() {
   const [pinInput, setPinInput] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<{ name: string; amount: number } | null>(null);
   
-  // Track selected lines for the calculator pop-up
+  // Track selected lines for the calculation pop-up
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
+  
+  // Track the ID of a newly added item to auto-focus its amount field
+  const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  const amountInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     signInAnonymously(auth).catch(console.error);
@@ -101,14 +105,12 @@ export default function App() {
       const sortedData = data.sort((a, b) => {
         if (b.date !== a.date) return b.date.localeCompare(a.date);
         
-        // Dynamic fallback logic to fix layout anchoring issues while typing
         const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : null;
         const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : null;
         
         if (timeA !== null && timeB !== null) {
           return timeB - timeA;
         }
-        // Fallback safely to stable ID sort sequence if server tokens are pending
         return b.id.localeCompare(a.id);
       });
 
@@ -124,6 +126,31 @@ export default function App() {
       unsubExpenses();
     };
   }, [isAuthenticated]);
+
+  // Hook to handle auto-anchoring focus onto a newly appended transaction row
+  useEffect(() => {
+    if (justAddedId && amountInputsRef.current[justAddedId]) {
+      const targetInput = amountInputsRef.current[justAddedId];
+      if (targetInput) {
+        targetInput.focus();
+        // Soft timeout helps iOS Safari adjust scroll layout context cleanly
+        setTimeout(() => {
+          targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 80);
+      }
+      setJustAddedId(null);
+    }
+  }, [expenses, justAddedId]);
+
+  const handleAddNewExpense = async (categoryName: string) => {
+    const docRef = await addDoc(collection(db, 'expenses'), { 
+      category: categoryName, 
+      amount: 0, 
+      date: new Date().toISOString().split('T')[0], 
+      createdAt: serverTimestamp() 
+    });
+    setJustAddedId(docRef.id);
+  };
 
   const handleClearAll = async () => {
     if (!window.confirm("Delete all transactions?")) return;
@@ -305,13 +332,8 @@ export default function App() {
             return (
               <button 
                 key={cat} 
-                onClick={() => addDoc(collection(db, 'expenses'), { 
-                  category: cat, 
-                  amount: 0, 
-                  date: new Date().toISOString().split('T')[0], 
-                  createdAt: serverTimestamp() 
-                })} 
-                className="py-2 px-2 bg-white border border-slate-100 rounded-xl text-[10px] font-black text-slate-700 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate flex items-center justify-center gap-1"
+                onClick={() => handleAddNewExpense(cat)} 
+                className="py-2 px-2 bg-white border border-slate-100 rounded-xl text-[10px] font-black text-slate-700 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate flex items-center justify-center gap-1 touch-manipulation"
               >
                 <span className="truncate">+ {cat}</span>
                 {catTotal > 0 && <span className="text-slate-400 font-bold shrink-0">(${catTotal.toFixed(0)})</span>}
@@ -327,14 +349,14 @@ export default function App() {
             return (
               <div 
                 key={exp.id} 
-                onClick={(e) => {
-                  // Only trigger selection calculation if clicking outside of interactive inputs/buttons
+                onPointerDown={(e) => {
+                  // Using pointer event checks ensures instantaneous response across iOS Safari
                   const targetTagName = (e.target as HTMLElement).tagName.toLowerCase();
                   if (targetTagName !== 'input' && targetTagName !== 'button' && !(e.target as HTMLElement).closest('button')) {
                     handleToggleSelectExpense(exp.id);
                   }
                 }}
-                className={`p-4 rounded-2xl border transition-all duration-150 flex items-center gap-4 shadow-sm select-none cursor-pointer ${
+                className={`p-4 rounded-2xl border transition-all duration-150 flex items-center gap-4 shadow-sm select-none touch-manipulation ${
                   isSelected 
                     ? 'bg-blue-5/70 border-blue-200 ring-2 ring-blue-500/10' 
                     : 'bg-white border-slate-100 hover:border-slate-200'
@@ -345,7 +367,13 @@ export default function App() {
                     <input className="font-black text-slate-800 bg-transparent focus:outline-none w-full" value={exp.category} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { category: e.target.value })} />
                     <div className="flex items-center text-blue-600 font-black">
                       <span className="text-sm mr-0.5">$</span>
-                      <input type="number" className="w-16 text-right bg-transparent focus:outline-none" value={exp.amount || ''} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { amount: Number(e.target.value) })} />
+                      <input 
+                        type="number" 
+                        ref={el => { amountInputsRef.current[exp.id] = el; }}
+                        className="w-16 text-right bg-transparent focus:outline-none" 
+                        value={exp.amount || ''} 
+                        onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { amount: Number(e.target.value) })} 
+                      />
                     </div>
                   </div>
                   <div className="flex justify-between text-slate-400">
@@ -355,7 +383,7 @@ export default function App() {
                     </div>
                     <button 
                       onClick={() => deleteDoc(doc(db, 'expenses', exp.id))} 
-                      className="text-slate-200 hover:text-red-400"
+                      className="text-slate-200 hover:text-red-400 p-1"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -369,14 +397,14 @@ export default function App() {
         <div className="mt-12 mb-8 space-y-3">
           <button 
             onClick={handleClearAll} 
-            className="w-full py-4 bg-red-50 text-red-600 rounded-2xl border border-red-100 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+            className="w-full py-4 bg-red-50 text-red-600 rounded-2xl border border-red-100 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all shadow-sm touch-manipulation"
           >
             <Eraser size={14}/> Clear All Transactions
           </button>
           
           <button 
             onClick={handleExportCSV} 
-            className="w-full py-4 bg-slate-100 text-slate-700 rounded-2xl border border-slate-200 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 transition-all shadow-sm"
+            className="w-full py-4 bg-slate-100 text-slate-700 rounded-2xl border border-slate-200 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 transition-all shadow-sm touch-manipulation"
           >
             <Download size={14}/> Export to CSV
           </button>
@@ -397,7 +425,7 @@ export default function App() {
             </div>
             <button 
               onClick={() => setSelectedExpenseIds([])} 
-              className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white transition-colors touch-manipulation"
               title="Clear selection"
             >
               <X size={16} className="stroke-[2.5]" />
