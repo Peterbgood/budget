@@ -366,19 +366,6 @@ export default function App() {
                     : 'bg-white border-slate-100 hover:border-slate-200'
                 }`}
               >
-                {/* Small explicit select button instead of clicking the whole line item */}
-                <button
-                  type="button"
-                  onClick={() => handleToggleSelectExpense(exp.id)}
-                  className={`w-6 h-6 rounded-lg border transition-all flex items-center justify-center shrink-0 touch-manipulation ${
-                    isSelected 
-                      ? 'bg-blue-500 border-blue-500 text-white shadow-sm' 
-                      : 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300'
-                  }`}
-                >
-                  {isSelected ? <Check size={12} className="stroke-[3]" /> : <Plus size={12} className="stroke-[3]" />}
-                </button>
-
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between mb-1">
                     <input className="font-black text-slate-800 bg-transparent focus:outline-none w-full" value={exp.category} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { category: e.target.value })} />
@@ -399,33 +386,50 @@ export default function App() {
                       <input type="date" className="text-[10px] bg-transparent focus:outline-none font-bold uppercase" value={exp.date} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { date: e.target.value })} />
                     </div>
                     
-                    {/* Inline conditional non-popup delete logic */}
-                    <div className="relative pointer-events-auto">
-                      {isStagingDelete ? (
-                        <button 
-                          type="button"
-                          onPointerDown={(e) => {
-                            e.stopPropagation(); // Stops parent or global dismissals from blocking execution
-                            deleteDoc(doc(db, 'expenses', exp.id));
-                            setDeletingId(null);
-                          }}
-                          className="bg-red-500 text-white text-[9px] font-black tracking-wider uppercase px-2.5 py-1 rounded-lg shadow-sm hover:bg-red-600 animate-fadeIn shrink-0 touch-manipulation"
-                        >
-                          CONFIRM?
-                        </button>
-                      ) : (
-                        <button 
-                          type="button"
-                          onPointerDown={(e) => {
-                            e.stopPropagation(); // Staging needs explicit focus containment
-                            setDeletingId(exp.id);
-                          }} 
-                          className="text-slate-200 hover:text-red-400 p-1 rounded transition-colors touch-manipulation"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
+                    {/* Action Group Container: Toggles selection and handles inline deletion */}
+                    <div className="flex items-center gap-2 pointer-events-auto shrink-0">
+                      {/* Selection toggle moved over to the right hand side */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSelectExpense(exp.id)}
+                        className={`w-6 h-6 rounded-lg border transition-all flex items-center justify-center touch-manipulation ${
+                          isSelected 
+                            ? 'bg-blue-500 border-blue-500 text-white shadow-sm' 
+                            : 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300'
+                        }`}
+                      >
+                        {isSelected ? <Check size={12} className="stroke-[3]" /> : <Plus size={12} className="stroke-[3]" />}
+                      </button>
+
+                      {/* Inline conditional non-popup delete logic */}
+                      <div className="relative">
+                        {isStagingDelete ? (
+                          <button 
+                            type="button"
+                            onPointerDown={(e) => {
+                              e.stopPropagation(); // Stops parent or global dismissals from blocking execution
+                              deleteDoc(doc(db, 'expenses', exp.id));
+                              setDeletingId(null);
+                            }}
+                            className="bg-red-500 text-white text-[9px] font-black tracking-wider uppercase px-2.5 py-1 rounded-lg shadow-sm hover:bg-red-600 animate-fadeIn shrink-0 touch-manipulation"
+                          >
+                            CONFIRM?
+                          </button>
+                        ) : (
+                          <button 
+                            type="button"
+                            onPointerDown={(e) => {
+                              e.stopPropagation(); // Staging needs explicit focus containment
+                              setDeletingId(exp.id);
+                            }} 
+                            className="text-slate-200 hover:text-red-400 p-1 rounded transition-colors touch-manipulation"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
+
                   </div>
                 </div>
               </div>
