@@ -5,7 +5,7 @@ import {
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc, writeBatch 
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { Trash2, Calendar, ReceiptText, Lock, PieChart as PieIcon, X, Eraser, Download, Plus, Check } from 'lucide-react';
+import { Trash2, Calendar, ReceiptText, Lock, PieChart as PieIcon, X, Eraser, Download, Plus, Check, Clock } from 'lucide-react';
 
 interface Expense {
   id: string;
@@ -197,6 +197,27 @@ export default function App() {
   const totalSpent = useMemo(() => expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0), [expenses]);
   const remaining = monthlyBudget - totalSpent;
 
+  // Calculates the remaining days until the 13th of the next month
+  const daysUntilNext13th = useMemo(() => {
+    const today = new Date();
+    // Create a date object representing midnight of today to isolate pure day differences
+    const currentMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    // Target month is the next calendar month
+    let targetYear = today.getFullYear();
+    let targetMonth = today.getMonth() + 1;
+    
+    if (targetMonth > 11) {
+      targetMonth = 0;
+      targetYear += 1;
+    }
+    
+    const targetDate = new Date(targetYear, targetMonth, 13);
+    const differenceInMs = targetDate.getTime() - currentMidnight.getTime();
+    
+    return Math.ceil(differenceInMs / (1000 * 60 * 60 * 24));
+  }, []);
+
   const categoryTotalsMap = useMemo(() => {
     const map: Record<string, number> = {};
     expenses.forEach(e => {
@@ -254,11 +275,18 @@ export default function App() {
       <div className="px-4 pt-6 mb-6">
         <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-xl p-6 border border-white">
           
-          <div className="text-center mb-6">
+          <div className="text-center mb-6 relative">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Remaining</p>
-            <p className={`text-4xl font-black ${remaining < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-              ${remaining.toFixed(0)}
-            </p>
+            <div className="flex flex-col items-center justify-center relative">
+              <p className={`text-4xl font-black ${remaining < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                ${remaining.toFixed(0)}
+              </p>
+              {/* Discrete countdown pill beneath/next to remaining status */}
+              <div className="mt-1 flex items-center gap-1 text-[9px] font-black uppercase text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full shadow-inner tracking-wider">
+                <Clock size={10} className="text-slate-400" />
+                <span>{daysUntilNext13th} days left until 13th</span>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-6 border-t border-slate-100 pt-4">
