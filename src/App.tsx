@@ -143,6 +143,9 @@ export default function App() {
       const targetInput = amountInputsRef.current[justAddedId];
       if (targetInput) {
         targetInput.focus();
+        // Position cursor at the very end of the text selection
+        const valLength = targetInput.value.length;
+        targetInput.setSelectionRange(valLength, valLength);
         setTimeout(() => {
           targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 80);
@@ -192,6 +195,16 @@ export default function App() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Helper to handle the "ATM-Style" mask calculation safely
+  const handleAmountMaskChange = (rawInputValue: string): number => {
+    // Strip out non-digit characters
+    const digitsOnly = rawInputValue.replace(/\D/g, "");
+    if (!digitsOnly) return 0;
+    
+    // Divide by 100 to push the last two inputs into decimal positioning
+    return parseInt(digitsOnly, 10) / 100;
   };
 
   const totalSpent = useMemo(() => expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0), [expenses]);
@@ -279,7 +292,7 @@ export default function App() {
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Remaining</p>
             <div className="flex flex-col items-center justify-center relative">
               <p className={`text-4xl font-black ${remaining < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                ${remaining.toFixed(0)}
+                {remaining < 0 ? '-' : ''}${Math.abs(remaining).toFixed(2)}
               </p>
               {/* Discrete countdown pill beneath/next to remaining status */}
               <div className="mt-1 flex items-center gap-1 text-[9px] font-black uppercase text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full shadow-inner tracking-wider">
@@ -295,11 +308,12 @@ export default function App() {
               <div className="flex items-center justify-center gap-1">
                 <span className="text-xl font-black text-slate-300">$</span>
                 <input 
-                  type="number" 
-                  className="text-2xl font-black focus:outline-none w-24 bg-transparent text-center" 
-                  value={monthlyBudget || ''} 
+                  type="text" 
+                  inputMode="numeric"
+                  className="text-2xl font-black focus:outline-none w-28 bg-transparent text-center" 
+                  value={(monthlyBudget || 0).toFixed(2)} 
                   onChange={(e) => {
-                    const val = Number(e.target.value);
+                    const val = handleAmountMaskChange(e.target.value);
                     setMonthlyBudget(val);
                     setDoc(doc(db, 'budgets', 'main_config'), { monthlyBudget: val }, { merge: true });
                   }} 
@@ -308,7 +322,7 @@ export default function App() {
             </div>
             <div className="text-center">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Spent</p>
-              <p className="text-2xl font-black text-slate-800">${totalSpent.toFixed(0)}</p>
+              <p className="text-2xl font-black text-slate-800">${totalSpent.toFixed(2)}</p>
             </div>
           </div>
           
@@ -331,7 +345,7 @@ export default function App() {
                    }}
                  >
                     <div className="absolute bottom-full mb-2 hidden group-hover:block bg-slate-800 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50 shadow-lg">
-                      {cat}: ${Number(val).toFixed(0)}
+                      {cat}: ${Number(val).toFixed(2)}
                     </div>
                  </div>
                ))}
@@ -344,7 +358,7 @@ export default function App() {
                    Selected: <span className="text-slate-900">{selectedCategory.name}</span>
                  </div>
                  <div className="flex items-center gap-3">
-                   <span className="text-sm font-black text-blue-600">${selectedCategory.amount.toFixed(0)}</span>
+                   <span className="text-sm font-black text-blue-600">${selectedCategory.amount.toFixed(2)}</span>
                    <button onClick={() => setSelectedCategory(null)} className="text-slate-400 hover:text-slate-600"><X size={14}/></button>
                  </div>
                </div>
@@ -354,7 +368,7 @@ export default function App() {
                 {chartData.map(([cat, val], i) => (
                   <div key={cat} className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 uppercase">
                     <div className={`w-2 h-2 rounded-full ${['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500'][i % 6]}`} />
-                    {cat} <span className="text-slate-300 ml-0.5">${Number(val).toFixed(0)}</span>
+                    {cat} <span className="text-slate-300 ml-0.5">${Number(val).toFixed(2)}</span>
                   </div>
                 ))}
              </div>
@@ -373,7 +387,7 @@ export default function App() {
                 className="py-2 px-2 bg-white border border-slate-100 rounded-xl text-[10px] font-black text-slate-700 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate flex items-center justify-center gap-1 touch-manipulation"
               >
                 <span className="truncate">+ {cat}</span>
-                {catTotal > 0 && <span className="text-slate-400 font-bold shrink-0">(${catTotal.toFixed(0)})</span>}
+                {catTotal > 0 && <span className="text-slate-400 font-bold shrink-0">(${catTotal.toFixed(2)})</span>}
               </button>
             );
           })}
@@ -400,11 +414,15 @@ export default function App() {
                     <div className="flex items-center text-blue-600 font-black">
                       <span className="text-sm mr-0.5">$</span>
                       <input 
-                        type="number" 
+                        type="text" 
+                        inputMode="numeric"
                         ref={el => { amountInputsRef.current[exp.id] = el; }}
-                        className="w-16 text-right bg-transparent focus:outline-none" 
-                        value={exp.amount || ''} 
-                        onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { amount: Number(e.target.value) })} 
+                        className="w-20 text-right bg-transparent focus:outline-none" 
+                        value={(exp.amount || 0).toFixed(2)} 
+                        onChange={(e) => {
+                          const val = handleAmountMaskChange(e.target.value);
+                          updateDoc(doc(db, 'expenses', exp.id), { amount: val });
+                        }} 
                       />
                     </div>
                   </div>
