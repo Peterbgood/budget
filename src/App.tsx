@@ -44,14 +44,8 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<{ name: string; amount: number } | null>(null);
-  
-  // Track selected lines for the calculator pop-up
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
-  
-  // Track which item is currently staging a delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  
-  // Track the ID of a newly added item to auto-focus its amount field
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const amountInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -107,21 +101,14 @@ export default function App() {
 
       const sortedData = data.sort((a, b) => {
         if (b.date !== a.date) return b.date.localeCompare(a.date);
-        
         const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : null;
         const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : null;
-        
-        if (timeA !== null && timeB !== null) {
-          return timeB - timeA;
-        }
+        if (timeA !== null && timeB !== null) return timeB - timeA;
         return b.id.localeCompare(a.id);
       });
 
       setExpenses(sortedData);
       setLoading(false);
-    }, (error) => {
-        console.error("Firebase Query Error:", error);
-        setLoading(false);
     });
 
     return () => {
@@ -130,7 +117,6 @@ export default function App() {
     };
   }, [isAuthenticated]);
 
-  // Reset delete staging state if user taps anywhere else on screen
   useEffect(() => {
     if (!deletingId) return;
     const handleGlobalClick = () => setDeletingId(null);
@@ -143,9 +129,7 @@ export default function App() {
       const targetInput = amountInputsRef.current[justAddedId];
       if (targetInput) {
         targetInput.focus();
-        // Position cursor at the very end of the text selection
-        const valLength = targetInput.value.length;
-        targetInput.setSelectionRange(valLength, valLength);
+        targetInput.select();
         setTimeout(() => {
           targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 80);
@@ -177,18 +161,15 @@ export default function App() {
       window.alert("No transactions to export.");
       return;
     }
-    
     const headers = ["Date", "Category", "Amount ($)"];
     const rows = expenses.map(exp => [
       exp.date,
       `"${exp.category.replace(/"/g, '""')}"`,
       exp.amount.toFixed(2)
     ]);
-    
     const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    
     const link = document.createElement("a");
     link.setAttribute("href", url);
     link.setAttribute("download", `expenses_export_${new Date().toISOString().split('T')[0]}.csv`);
@@ -197,37 +178,26 @@ export default function App() {
     document.body.removeChild(link);
   };
 
-  // Helper to handle the "ATM-Style" mask calculation safely
   const handleAmountMaskChange = (rawInputValue: string): number => {
-    // Strip out non-digit characters
     const digitsOnly = rawInputValue.replace(/\D/g, "");
     if (!digitsOnly) return 0;
-    
-    // Divide by 100 to push the last two inputs into decimal positioning
     return parseInt(digitsOnly, 10) / 100;
   };
 
   const totalSpent = useMemo(() => expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0), [expenses]);
   const remaining = monthlyBudget - totalSpent;
 
-  // Calculates the remaining days until the 13th of the next month
   const daysUntilNext13th = useMemo(() => {
     const today = new Date();
-    // Create a date object representing midnight of today to isolate pure day differences
     const currentMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    
-    // Target month is the next calendar month
     let targetYear = today.getFullYear();
     let targetMonth = today.getMonth() + 1;
-    
     if (targetMonth > 11) {
       targetMonth = 0;
       targetYear += 1;
     }
-    
     const targetDate = new Date(targetYear, targetMonth, 13);
     const differenceInMs = targetDate.getTime() - currentMidnight.getTime();
-    
     return Math.ceil(differenceInMs / (1000 * 60 * 60 * 24));
   }, []);
 
@@ -287,14 +257,12 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-32">
       <div className="px-4 pt-6 mb-6">
         <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-xl p-6 border border-white">
-          
           <div className="text-center mb-6 relative">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Remaining</p>
             <div className="flex flex-col items-center justify-center relative">
               <p className={`text-4xl font-black ${remaining < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                 {remaining < 0 ? '-' : ''}${Math.abs(remaining).toFixed(2)}
               </p>
-              {/* Discrete countdown pill beneath/next to remaining status */}
               <div className="mt-1 flex items-center gap-1 text-[9px] font-black uppercase text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full shadow-inner tracking-wider">
                 <Clock size={10} className="text-slate-400" />
                 <span>{daysUntilNext13th} days left until 13th</span>
@@ -384,9 +352,9 @@ export default function App() {
               <button 
                 key={cat} 
                 onClick={() => handleAddNewExpense(cat)} 
-                className="py-2 px-2 bg-white border border-slate-100 rounded-xl text-[10px] font-black text-slate-700 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate flex items-center justify-center gap-1 touch-manipulation"
+                className="py-1 px-1 bg-white border border-slate-100 rounded-lg text-[8px] leading-tight font-black text-slate-700 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate flex flex-col items-center justify-center min-h-[44px] touch-manipulation"
               >
-                <span className="truncate">+ {cat}</span>
+                <span className="truncate">{cat}</span>
                 {catTotal > 0 && <span className="text-slate-400 font-bold shrink-0">(${catTotal.toFixed(2)})</span>}
               </button>
             );
@@ -432,9 +400,7 @@ export default function App() {
                       <input type="date" className="text-[10px] bg-transparent focus:outline-none font-bold uppercase" value={exp.date} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { date: e.target.value })} />
                     </div>
                     
-                    {/* Action Group Container: Toggles selection and handles inline deletion */}
                     <div className="flex items-center gap-2 pointer-events-auto shrink-0">
-                      {/* Selection toggle moved over to the right hand side */}
                       <button
                         type="button"
                         onClick={() => handleToggleSelectExpense(exp.id)}
@@ -447,13 +413,12 @@ export default function App() {
                         {isSelected ? <Check size={12} className="stroke-[3]" /> : <Plus size={12} className="stroke-[3]" />}
                       </button>
 
-                      {/* Inline conditional non-popup delete logic */}
                       <div className="relative">
                         {isStagingDelete ? (
                           <button 
                             type="button"
                             onPointerDown={(e) => {
-                              e.stopPropagation(); // Stops parent or global dismissals from blocking execution
+                              e.stopPropagation(); 
                               deleteDoc(doc(db, 'expenses', exp.id));
                               setDeletingId(null);
                             }}
@@ -465,7 +430,7 @@ export default function App() {
                           <button 
                             type="button"
                             onPointerDown={(e) => {
-                              e.stopPropagation(); // Staging needs explicit focus containment
+                              e.stopPropagation(); 
                               setDeletingId(exp.id);
                             }} 
                             className="text-slate-200 hover:text-red-400 p-1 rounded transition-colors touch-manipulation"
@@ -475,7 +440,6 @@ export default function App() {
                         )}
                       </div>
                     </div>
-
                   </div>
                 </div>
               </div>
@@ -500,7 +464,6 @@ export default function App() {
         </div>
       </main>
 
-      {/* Floating total display pop-up when lines are selected */}
       {selectedExpenseIds.length > 0 && (
         <div className="fixed bottom-6 left-0 right-0 px-4 z-50 pointer-events-none flex justify-center animate-slideUp">
           <div className="pointer-events-auto bg-slate-900/95 backdrop-blur text-white py-3.5 px-6 rounded-2xl shadow-2xl border border-slate-800 flex items-center justify-between gap-6 max-w-sm w-full">
