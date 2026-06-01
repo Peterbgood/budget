@@ -331,15 +331,6 @@ export default function App() {
                  </div>
                </div>
              )}
-             
-             <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {chartData.map(([cat, val], i) => (
-                  <div key={cat} className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 uppercase">
-                    <div className={`w-2 h-2 rounded-full ${['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500'][i % 6]}`} />
-                    {cat} <span className="text-slate-300 ml-0.5">${Number(val).toFixed(2)}</span>
-                  </div>
-                ))}
-             </div>
           </div>
         </div>
       </div>
