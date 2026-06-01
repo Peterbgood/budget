@@ -128,11 +128,11 @@ export default function App() {
     if (justAddedId && amountInputsRef.current[justAddedId]) {
       const targetInput = amountInputsRef.current[justAddedId];
       if (targetInput) {
-        targetInput.focus();
-        targetInput.select();
         setTimeout(() => {
+          targetInput.focus();
+          targetInput.select();
           targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 80);
+        }, 100);
       }
       setJustAddedId(null);
     }
