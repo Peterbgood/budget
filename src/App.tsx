@@ -188,18 +188,27 @@ export default function App() {
   const remaining = monthlyBudget - totalSpent;
 
   const daysUntilNext13th = useMemo(() => {
-    const today = new Date();
-    const currentMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    let targetYear = today.getFullYear();
-    let targetMonth = today.getMonth() + 1;
+  const today = new Date();
+  let targetYear = today.getFullYear();
+  let targetMonth = today.getMonth();
+
+  // If today is the 13th or later, target the 13th of next month
+  if (today.getDate() >= 13) {
+    targetMonth += 1;
     if (targetMonth > 11) {
       targetMonth = 0;
       targetYear += 1;
     }
-    const targetDate = new Date(targetYear, targetMonth, 13);
-    const differenceInMs = targetDate.getTime() - currentMidnight.getTime();
-    return Math.ceil(differenceInMs / (1000 * 60 * 60 * 24));
-  }, []);
+  }
+
+  const targetDate = new Date(targetYear, targetMonth, 13);
+  
+  // Reset time to midnight to ensure accurate day calculation
+  const currentMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  
+  const differenceInMs = targetDate.getTime() - currentMidnight.getTime();
+  return Math.ceil(differenceInMs / (1000 * 60 * 60 * 24));
+}, []);
 
   const categoryTotalsMap = useMemo(() => {
     const map: Record<string, number> = {};
