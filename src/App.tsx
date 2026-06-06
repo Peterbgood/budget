@@ -65,7 +65,7 @@ export default function App() {
   }, [pinInput]);
 
   useEffect(() => {
-    if (isAuthenticated) return;
+    if (isAuthenticated) return; // Fixed: Now correctly stops listening AFTER authentication
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key >= '0' && e.key <= '9') { 
         if (pinInput.length < 4) setPinInput(prev => prev + e.key); 
@@ -188,27 +188,24 @@ export default function App() {
   const remaining = monthlyBudget - totalSpent;
 
   const daysUntilNext13th = useMemo(() => {
-  const today = new Date();
-  let targetYear = today.getFullYear();
-  let targetMonth = today.getMonth();
+    const today = new Date();
+    let targetYear = today.getFullYear();
+    let targetMonth = today.getMonth();
 
-  // If today is the 13th or later, target the 13th of next month
-  if (today.getDate() >= 13) {
-    targetMonth += 1;
-    if (targetMonth > 11) {
-      targetMonth = 0;
-      targetYear += 1;
+    if (today.getDate() >= 13) {
+      targetMonth += 1;
+      if (targetMonth > 11) {
+        targetMonth = 0;
+        targetYear += 1;
+      }
     }
-  }
 
-  const targetDate = new Date(targetYear, targetMonth, 13);
-  
-  // Reset time to midnight to ensure accurate day calculation
-  const currentMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  
-  const differenceInMs = targetDate.getTime() - currentMidnight.getTime();
-  return Math.ceil(differenceInMs / (1000 * 60 * 60 * 24));
-}, []);
+    const targetDate = new Date(targetYear, targetMonth, 13);
+    const currentMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    const differenceInMs = targetDate.getTime() - currentMidnight.getTime();
+    return Math.ceil(differenceInMs / (1000 * 60 * 60 * 24));
+  }, []);
 
   const categoryTotalsMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -217,6 +214,14 @@ export default function App() {
     });
     return map;
   }, [expenses]);
+
+  const sortedCategories = useMemo(() => {
+    return [...CATEGORIES].sort((a, b) => {
+      const totalA = categoryTotalsMap[a] || 0;
+      const totalB = categoryTotalsMap[b] || 0;
+      return totalB - totalA;
+    });
+  }, [categoryTotalsMap]);
 
   const chartData = useMemo(() => {
     return Object.entries(categoryTotalsMap)
@@ -238,22 +243,30 @@ export default function App() {
 
   if (!isAuthenticated) {
     return (
-      <div className="h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-slate-900">
-        <div className="bg-white p-8 rounded-[40px] shadow-2xl border border-white flex flex-col items-center">
-          <Lock className="mb-6 text-blue-500" size={40} />
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8">Enter Secure PIN</p>
-          <div className="flex gap-4 mb-12">
+      <div className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center p-6 text-slate-900 w-full">
+        <div className="w-full max-w-sm md:max-w-md flex flex-col items-center md:bg-white md:p-10 md:rounded-[40px] md:shadow-2xl md:border md:border-white transition-all">
+          <Lock className="mb-8 md:mb-6 text-blue-500 w-12 h-12 md:w-10 md:h-10 transition-all" />
+          <p className="text-[12px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-12 md:mb-8 transition-all">Enter Secure PIN</p>
+          
+          <div className="flex gap-6 md:gap-4 mb-16 md:mb-10 transition-all">
             {[0, 1, 2, 3].map(i => (
-              <div key={i} className={`w-3.5 h-3.5 rounded-full border-2 transition-all duration-200 ${pinInput.length > i ? 'bg-blue-500 border-blue-500 scale-110' : 'bg-transparent border-slate-200'} ${pinInput.length === 4 && pinInput !== APP_PIN ? 'border-red-500 bg-red-500 animate-pulse' : ''}`} />
+              <div key={i} className={`w-4 h-4 md:w-3.5 md:h-3.5 rounded-full border-2 transition-all duration-200 ${pinInput.length > i ? 'bg-blue-500 border-blue-500 scale-110' : 'bg-transparent border-slate-300 md:border-slate-200'} ${pinInput.length === 4 && pinInput !== APP_PIN ? 'border-red-500 bg-red-500 animate-pulse' : ''}`} />
             ))}
           </div>
-          <div className="grid grid-cols-3 gap-4 select-none">
+
+          <div className="grid grid-cols-3 gap-6 md:gap-4 select-none w-full max-w-[320px] md:max-w-fit">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-              <button key={n} onClick={() => pinInput.length < 4 && setPinInput(prev => prev + n)} className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 text-xl font-black text-slate-700 active:bg-blue-500 active:text-white transition-all shadow-sm">{n}</button>
+              <button key={n} onClick={() => pinInput.length < 4 && setPinInput(prev => prev + n)} className="aspect-square md:aspect-auto md:w-16 md:h-16 rounded-3xl md:rounded-2xl bg-white md:bg-slate-50 border border-slate-100 text-3xl md:text-xl font-black text-slate-700 active:bg-blue-500 active:text-white hover:bg-slate-50 md:hover:bg-slate-100 transition-all shadow-sm flex items-center justify-center">
+                {n}
+              </button>
             ))}
             <div />
-            <button onClick={() => pinInput.length < 4 && setPinInput(prev => prev + "0")} className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 text-xl font-black text-slate-700 active:bg-blue-500 active:text-white transition-all shadow-sm">0</button>
-            <button onClick={() => setPinInput("")} className="w-16 h-16 flex items-center justify-center text-slate-300 hover:text-red-400"><X size={24}/></button>
+            <button onClick={() => pinInput.length < 4 && setPinInput(prev => prev + "0")} className="aspect-square md:aspect-auto md:w-16 md:h-16 rounded-3xl md:rounded-2xl bg-white md:bg-slate-50 border border-slate-100 text-3xl md:text-xl font-black text-slate-700 active:bg-blue-500 active:text-white hover:bg-slate-50 md:hover:bg-slate-100 transition-all shadow-sm flex items-center justify-center">
+              0
+            </button>
+            <button onClick={() => setPinInput("")} className="aspect-square md:aspect-auto md:w-16 md:h-16 flex items-center justify-center text-slate-400 hover:text-red-500 active:bg-slate-200 md:active:bg-slate-100 rounded-3xl md:rounded-2xl transition-all">
+              <X className="w-8 h-8 md:w-6 md:h-6 stroke-[3]"/>
+            </button>
           </div>
         </div>
       </div>
@@ -346,7 +359,7 @@ export default function App() {
 
       <main className="max-w-xl mx-auto px-4 mt-8">
         <div className="grid grid-cols-3 gap-1.5 mb-8">
-          {CATEGORIES.map(cat => {
+          {sortedCategories.map(cat => {
             const catTotal = categoryTotalsMap[cat] || 0;
             return (
               <button 
