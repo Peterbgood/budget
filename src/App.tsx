@@ -5,7 +5,7 @@ import {
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc, writeBatch 
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { Trash2, Calendar, ReceiptText, Lock, PieChart as PieIcon, X, Eraser, Download, Plus, Check, Clock } from 'lucide-react';
+import { Trash2, Calendar, ReceiptText, PieChart as PieIcon, X, Eraser, Download, Plus, Check, Clock } from 'lucide-react';
 
 interface Expense {
   id: string;
@@ -36,18 +36,6 @@ const CATEGORIES = [
 ];
 
 const APP_PIN = "3270";
-
-const IOS_KEYS = [
-  { num: '1', letters: '' },
-  { num: '2', letters: 'ABC' },
-  { num: '3', letters: 'DEF' },
-  { num: '4', letters: 'GHI' },
-  { num: '5', letters: 'JKL' },
-  { num: '6', letters: 'MNO' },
-  { num: '7', letters: 'PQRS' },
-  { num: '8', letters: 'TUV' },
-  { num: '9', letters: 'WXYZ' },
-];
 
 export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
