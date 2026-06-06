@@ -31,7 +31,7 @@ const auth = getAuth(app);
 
 const CATEGORIES = [
   'Walmart', 'Chick-fil-A', 'McDonald\'s', "Salsarita's", 
-  'Food City', 'Target', 'Publix', 'Panda Express', 
+  'Food City', 'Target', 'Publix', 'Panda Express', 'Kroger', 
   'Freddy\'s', 'Starbucks', 'Taco Bell', 'Dunkin', 'Amazon', 'Gas', 'Misc'
 ];
 
