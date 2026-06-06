@@ -37,6 +37,18 @@ const CATEGORIES = [
 
 const APP_PIN = "3270";
 
+const IOS_KEYS = [
+  { num: '1', letters: '' },
+  { num: '2', letters: 'ABC' },
+  { num: '3', letters: 'DEF' },
+  { num: '4', letters: 'GHI' },
+  { num: '5', letters: 'JKL' },
+  { num: '6', letters: 'MNO' },
+  { num: '7', letters: 'PQRS' },
+  { num: '8', letters: 'TUV' },
+  { num: '9', letters: 'WXYZ' },
+];
+
 export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
@@ -65,7 +77,7 @@ export default function App() {
   }, [pinInput]);
 
   useEffect(() => {
-    if (isAuthenticated) return; // Fixed: Now correctly stops listening AFTER authentication
+    if (isAuthenticated) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key >= '0' && e.key <= '9') { 
         if (pinInput.length < 4) setPinInput(prev => prev + e.key); 
@@ -243,29 +255,30 @@ export default function App() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center p-6 text-slate-900 w-full">
-        <div className="w-full max-w-sm md:max-w-md flex flex-col items-center md:bg-white md:p-10 md:rounded-[40px] md:shadow-2xl md:border md:border-white transition-all">
-          <Lock className="mb-8 md:mb-6 text-blue-500 w-12 h-12 md:w-10 md:h-10 transition-all" />
-          <p className="text-[12px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-12 md:mb-8 transition-all">Enter Secure PIN</p>
+      <div className="h-screen bg-black flex flex-col items-center justify-center p-6 text-white">
+        <div className="w-full max-w-[300px] flex flex-col items-center">
+          <p className="text-2xl font-bold mb-8">Enter PIN</p>
           
-          <div className="flex gap-6 md:gap-4 mb-16 md:mb-10 transition-all">
+          <div className="flex gap-4 mb-10">
             {[0, 1, 2, 3].map(i => (
-              <div key={i} className={`w-4 h-4 md:w-3.5 md:h-3.5 rounded-full border-2 transition-all duration-200 ${pinInput.length > i ? 'bg-blue-500 border-blue-500 scale-110' : 'bg-transparent border-slate-300 md:border-slate-200'} ${pinInput.length === 4 && pinInput !== APP_PIN ? 'border-red-500 bg-red-500 animate-pulse' : ''}`} />
+              <div key={i} className={`w-3 h-3 rounded-full transition-all duration-200 ${pinInput.length > i ? 'bg-white' : 'bg-white/20'}`} />
             ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-6 md:gap-4 select-none w-full max-w-[320px] md:max-w-fit">
+          <div className="grid grid-cols-3 gap-4 select-none w-full">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-              <button key={n} onClick={() => pinInput.length < 4 && setPinInput(prev => prev + n)} className="aspect-square md:aspect-auto md:w-16 md:h-16 rounded-3xl md:rounded-2xl bg-white md:bg-slate-50 border border-slate-100 text-3xl md:text-xl font-black text-slate-700 active:bg-blue-500 active:text-white hover:bg-slate-50 md:hover:bg-slate-100 transition-all shadow-sm flex items-center justify-center">
+              <button 
+                key={n} 
+                onClick={() => pinInput.length < 4 && setPinInput(prev => prev + n)} 
+                className="h-20 rounded-2xl bg-[#1c1c1e] text-2xl font-medium active:bg-[#3a3a3c] transition-all"
+              >
                 {n}
               </button>
             ))}
-            <div />
-            <button onClick={() => pinInput.length < 4 && setPinInput(prev => prev + "0")} className="aspect-square md:aspect-auto md:w-16 md:h-16 rounded-3xl md:rounded-2xl bg-white md:bg-slate-50 border border-slate-100 text-3xl md:text-xl font-black text-slate-700 active:bg-blue-500 active:text-white hover:bg-slate-50 md:hover:bg-slate-100 transition-all shadow-sm flex items-center justify-center">
-              0
-            </button>
-            <button onClick={() => setPinInput("")} className="aspect-square md:aspect-auto md:w-16 md:h-16 flex items-center justify-center text-slate-400 hover:text-red-500 active:bg-slate-200 md:active:bg-slate-100 rounded-3xl md:rounded-2xl transition-all">
-              <X className="w-8 h-8 md:w-6 md:h-6 stroke-[3]"/>
+            <button onClick={() => setPinInput("")} className="h-20 rounded-2xl bg-[#1c1c1e] text-xl font-medium active:bg-[#3a3a3c] transition-all">C</button>
+            <button onClick={() => pinInput.length < 4 && setPinInput(prev => prev + "0")} className="h-20 rounded-2xl bg-[#1c1c1e] text-2xl font-medium active:bg-[#3a3a3c] transition-all">0</button>
+            <button onClick={() => setPinInput(prev => prev.slice(0, -1))} className="h-20 rounded-2xl bg-[#1c1c1e] flex items-center justify-center active:bg-[#3a3a3c] transition-all">
+              <svg width="28" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff453a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
             </button>
           </div>
         </div>
