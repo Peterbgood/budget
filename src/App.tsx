@@ -32,7 +32,7 @@ const auth = getAuth(app);
 const CATEGORIES = [
   'Walmart', 'Chick-fil-A', 'McDonald\'s', "Salsarita's", 
   'Food City', 'Target', 'Publix', 'Panda Express', 'Kroger', 
-  'Freddy\'s', 'Starbucks', 'Taco Bell', 'Dunkin', 'Amazon', 'Gas', 'Little Caesars', 'Panara', 'Great Clips', 'Cash', 'Misc'
+  'Freddy\'s', 'Starbucks', 'Taco Bell', 'Dunkin', 'Amazon', 'Gas', 'Little Caesars', 'Panera', 'Great Clips', 'Cash', 'Misc'
 ];
 
 const APP_PIN = "3270";
