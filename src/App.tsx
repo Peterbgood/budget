@@ -76,8 +76,6 @@ export default function App() {
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [clearAllStaging, setClearAllStaging] = useState(false);
-  const [justAddedId, setJustAddedId] = useState<string | null>(null);
-  const amountInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
   const addCategoryBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
@@ -177,23 +175,6 @@ export default function App() {
     return () => window.removeEventListener('pointerdown', handleGlobalClick);
   }, [deletingId, categoryDeletingName, clearAllStaging]);
 
-  // ── Auto-focus newly added expense input ────────────────────────────────────
-
-  useEffect(() => {
-    if (!justAddedId) return;
-    const tryFocus = () => {
-      const targetInput = amountInputsRef.current[justAddedId];
-      if (targetInput) {
-        targetInput.focus();
-        targetInput.select();
-        targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setJustAddedId(null);
-      }
-    };
-    const t = setTimeout(tryFocus, 100);
-    return () => clearTimeout(t);
-  }, [expenses, justAddedId]);
-
   // ── Debounced Firestore writers ─────────────────────────────────────────────
 
   const debouncedUpdateCategory = useDebounce(
@@ -207,18 +188,6 @@ export default function App() {
   );
 
   // ── CRUD handlers ───────────────────────────────────────────────────────────
-
-  const handleAddNewExpense = async (categoryName: string) => {
-    // Force view to page 1 so the newly inserted item at the top is visible
-    setCurrentPage(1);
-    const docRef = await addDoc(collection(db, 'expenses'), {
-      category: categoryName,
-      amount: 0,
-      date: new Date().toISOString().split('T')[0],
-      createdAt: serverTimestamp()
-    });
-    setJustAddedId(docRef.id);
-  };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
@@ -336,7 +305,7 @@ export default function App() {
   ), [categoryTotalsMap, categories]);
 
   const chartData = useMemo(() => (
-    Object.entries(categoryTotalsMap).filter(([_, v]) => v > 0).sort((a, b) => b[1] - a[1])
+    Object.entries(categoryTotalsMap).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
   ), [categoryTotalsMap]);
 
   const selectedLinesTotal = useMemo(() => (
@@ -568,7 +537,6 @@ export default function App() {
                       <input
                         type="text"
                         inputMode="numeric"
-                        ref={el => { amountInputsRef.current[exp.id] = el; }}
                         className="w-20 text-right bg-transparent focus:outline-none text-zinc-100"
                         value={(exp.amount || 0).toFixed(2)}
                         onChange={(e) => {
@@ -746,6 +714,7 @@ export default function App() {
             <div className="flex gap-2 mt-4">
               <button className="flex-1 bg-zinc-700 p-3 rounded" onClick={()=>setQuickAddCategory(null)}>Cancel</button>
               <button className="flex-1 bg-blue-600 p-3 rounded" onClick={async()=>{
+                setCurrentPage(1);
                 await addDoc(collection(db,'expenses'),{
                   category: quickAddCategory,
                   amount: handleAmountMaskChange(quickAddAmount),
