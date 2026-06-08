@@ -6,7 +6,7 @@ import {
   Timestamp, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { Trash2, Calendar, ReceiptText, PieChart as PieIcon, X, Eraser, ClipboardCopy, Plus, Check, Clock } from 'lucide-react';
+import { Trash2, Calendar, ReceiptText, PieChart as PieIcon, X, Eraser, ClipboardCopy, Plus, Check, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -42,6 +42,8 @@ const DEFAULT_CATEGORIES = [
   "Freddy's", 'Starbucks', 'Taco Bell', 'Dunkin', 'Amazon', 'Gas',
   'Little Caesars', 'Panera', 'Cash'
 ];
+
+const ITEMS_PER_PAGE = 25;
 
 // NOTE: Move to an env variable (e.g. VITE_APP_PIN) for any non-personal deployment.
 const APP_PIN = "3270";
@@ -82,6 +84,9 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [categoryDeletingName, setCategoryDeletingName] = useState<string | null>(null);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
 
   // ── Auth ────────────────────────────────────────────────────────────────────
 
@@ -128,14 +133,10 @@ export default function App() {
       if (snap.exists() && snap.data().categories) {
         setCategories(snap.data().categories);
       } else {
-        // Initialize default categories in Firestore if they don't exist yet
         setDoc(doc(db, 'budgets', 'categories_config'), { categories: DEFAULT_CATEGORIES }, { merge: true });
       }
     });
 
-    // Dual orderBy: Firestore sorts by date then createdAt.
-    // JS re-sort below handles the brief window where serverTimestamp is null
-    // on newly-added docs before the server acknowledges — do NOT remove.
     const q = query(
       collection(db, 'expenses'),
       orderBy('date', 'desc'),
@@ -205,6 +206,8 @@ export default function App() {
   // ── CRUD handlers ───────────────────────────────────────────────────────────
 
   const handleAddNewExpense = async (categoryName: string) => {
+    // Force view to page 1 so the newly inserted item at the top is visible
+    setCurrentPage(1);
     const docRef = await addDoc(collection(db, 'expenses'), {
       category: categoryName,
       amount: 0,
@@ -212,6 +215,17 @@ export default function App() {
       createdAt: serverTimestamp()
     });
     setJustAddedId(docRef.id);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setNewCategoryInput("");
+    setTimeout(() => {
+      if (addCategoryBtnRef.current) {
+        addCategoryBtnRef.current.focus();
+        addCategoryBtnRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 80);
   };
 
   const handleAddCategorySubmit = async (e: React.FormEvent) => {
@@ -223,13 +237,17 @@ export default function App() {
       return;
     }
     
-    // Sync to Firestore instead of local state
     const catRef = doc(db, 'budgets', 'categories_config');
     await setDoc(catRef, { categories: arrayUnion(trimmed) }, { merge: true });
 
-    setNewCategoryInput("");
     setIsModalOpen(false);
-    setTimeout(() => addCategoryBtnRef.current?.focus(), 50);
+    setNewCategoryInput("");
+    setTimeout(() => {
+      if (addCategoryBtnRef.current) {
+        addCategoryBtnRef.current.focus();
+        addCategoryBtnRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 80);
   };
 
   const handleClearAll = async () => {
@@ -241,6 +259,7 @@ export default function App() {
     expenses.forEach(exp => batch.delete(doc(db, 'expenses', exp.id)));
     await batch.commit();
     setSelectedExpenseIds([]);
+    setCurrentPage(1);
     setClearAllStaging(false);
   };
 
@@ -266,10 +285,24 @@ export default function App() {
     );
   };
 
-  // ── Derived data ────────────────────────────────────────────────────────────
+  // ── Derived data & Pagination bounds ───────────────────────────────────────
 
   const totalSpent = useMemo(() => expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0), [expenses]);
   const remaining = monthlyBudget - totalSpent;
+
+  const totalPages = Math.max(1, Math.ceil(expenses.length / ITEMS_PER_PAGE));
+  
+  // Guard current page index dynamically if items get wiped or deleted out from beneath us
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [expenses, totalPages, currentPage]);
+
+  const paginatedExpenses = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return expenses.slice(start, start + ITEMS_PER_PAGE);
+  }, [expenses, currentPage]);
 
   const daysUntilNext13th = useMemo(() => {
     const today = new Date();
@@ -437,7 +470,6 @@ export default function App() {
                     type="button"
                     onPointerDown={async (e) => {
                       e.stopPropagation();
-                      // Sync deletion to Firestore
                       const catRef = doc(db, 'budgets', 'categories_config');
                       await setDoc(catRef, { categories: arrayRemove(cat) }, { merge: true });
                       setCategoryDeletingName(null);
@@ -489,11 +521,16 @@ export default function App() {
 
         {/* ── Transaction history ── */}
         <div className="space-y-3">
-          <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-            <ReceiptText size={12} /> History
-          </h2>
+          <div className="flex items-center justify-between ml-1">
+            <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+              <ReceiptText size={12} /> History 
+              <span className="text-zinc-600 font-normal normal-case ml-0.5">
+                ({expenses.length} total)
+              </span>
+            </h2>
+          </div>
 
-          {expenses.map(exp => {
+          {paginatedExpenses.map(exp => {
             const isSelected = selectedExpenseIds.includes(exp.id);
             const isStagingDelete = deletingId === exp.id;
 
@@ -589,6 +626,31 @@ export default function App() {
           })}
         </div>
 
+        {/* ── Low-Profile Pagination Controls ── */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between bg-zinc-900 border border-zinc-800/60 rounded-xl p-2 max-w-xs mx-auto text-zinc-400 shadow-md">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="p-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 disabled:opacity-30 disabled:pointer-events-none active:bg-zinc-800 transition-colors touch-manipulation"
+            >
+              <ChevronLeft size={16} className="stroke-[2.5]" />
+            </button>
+            
+            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 select-none">
+              Page <span className="text-zinc-200 font-black">{currentPage}</span> of {totalPages}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="p-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 disabled:opacity-30 disabled:pointer-events-none active:bg-zinc-800 transition-colors touch-manipulation"
+            >
+              <ChevronRight size={16} className="stroke-[2.5]" />
+            </button>
+          </div>
+        )}
+
         {/* ── Bottom actions ── */}
         <div className="mt-12 mb-8 space-y-3">
           <button
@@ -614,14 +676,14 @@ export default function App() {
 
       {/* ── Add Category modal ── */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 pt-16 sm:items-center sm:pt-4 z-50 animate-fadeIn">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
                 <Plus size={14} className="text-blue-400" /> Add Custom Category
               </h3>
               <button
-                onClick={() => { setIsModalOpen(false); setNewCategoryInput(""); setTimeout(() => addCategoryBtnRef.current?.focus(), 50); }}
+                onClick={handleCloseModal}
                 className="text-zinc-500 hover:text-zinc-300 transition-colors touch-manipulation"
               >
                 <X size={18} />
@@ -639,7 +701,7 @@ export default function App() {
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => { setIsModalOpen(false); setNewCategoryInput(""); setTimeout(() => addCategoryBtnRef.current?.focus(), 50); }}
+                  onClick={handleCloseModal}
                   className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors touch-manipulation"
                 >
                   Cancel
