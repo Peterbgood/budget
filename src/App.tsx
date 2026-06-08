@@ -491,7 +491,7 @@ export default function App() {
           {/* Add New button */}
           <button
             ref={addCategoryBtnRef}
-            onClick={() => setIsModalOpen(true)}
+            onPointerDown={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
             className="py-1.5 px-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[11px] leading-tight font-black text-blue-400 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase flex flex-col items-center justify-center min-h-[54px] touch-manipulation gap-0.5"
           >
             <Plus size={12} className="stroke-[3]" />
@@ -706,10 +706,10 @@ export default function App() {
               autoFocus
               type="text"
               inputMode="numeric"
-              value={quickAddAmount}
+              value={handleAmountMaskChange(quickAddAmount).toFixed(2)}
               onChange={(e)=>setQuickAddAmount(e.target.value)}
               className="w-full p-3 rounded bg-zinc-800"
-              placeholder="Amount"
+              placeholder="0.00"
             />
             <div className="flex gap-2 mt-4">
               <button className="flex-1 bg-zinc-700 p-3 rounded" onClick={()=>setQuickAddCategory(null)}>Cancel</button>
