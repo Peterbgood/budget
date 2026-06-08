@@ -36,12 +36,7 @@ const auth = getAuth(app);
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const DEFAULT_CATEGORIES = [
-  'Walmart', 'Chick-fil-A', "McDonald's", "Salsarita's",
-  'Food City', 'Target', 'Publix', 'Panda Express', 'Kroger',
-  "Freddy's", 'Starbucks', 'Taco Bell', 'Dunkin', 'Amazon', 'Gas',
-  'Little Caesars', 'Panera', 'Cash'
-];
+const DEFAULT_CATEGORIES: string[] = [];
 
 const ITEMS_PER_PAGE = 25;
 
@@ -469,19 +464,21 @@ export default function App() {
                         <span className="text-blue-400 font-black shrink-0 mt-0.5">(${catTotal.toFixed(2)})</span>
                       )}
                     </button>
-                    <div className="border-t border-zinc-800/60 flex justify-end px-2 py-0.5">
-                      <button
-                        type="button"
-                        onPointerDown={(e) => {
-                          e.stopPropagation();
-                          setCategoryDeletingName(cat);
-                        }}
-                        className="text-zinc-600 active:text-red-400 p-1 rounded transition-colors touch-manipulation"
-                        title={`Delete ${cat}`}
-                      >
-                        <X size={10} className="stroke-[3]" />
-                      </button>
-                    </div>
+                    {catTotal === 0 && (
+                      <div className="border-t border-zinc-800/60 flex justify-end px-2 py-0.5">
+                        <button
+                          type="button"
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            setCategoryDeletingName(cat);
+                          }}
+                          className="text-zinc-600 active:text-red-400 p-1 rounded transition-colors touch-manipulation"
+                          title={`Delete ${cat}`}
+                        >
+                          <X size={10} className="stroke-[3]" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
