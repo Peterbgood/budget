@@ -3,7 +3,7 @@ import { initializeApp } from "firebase/app";
 import {
   getFirestore, collection, query, orderBy, onSnapshot,
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc, writeBatch,
-  Timestamp
+  Timestamp, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { Trash2, Calendar, ReceiptText, PieChart as PieIcon, X, Eraser, ClipboardCopy, Plus, Check, Clock } from 'lucide-react';
@@ -73,16 +73,12 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<{ name: string; amount: number } | null>(null);
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  // FIX: two-tap confirm for "Clear All"
   const [clearAllStaging, setClearAllStaging] = useState(false);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const amountInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
   const addCategoryBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  const [categories, setCategories] = useState<string[]>(() => {
-    const saved = localStorage.getItem('budget_categories');
-    return saved ? JSON.parse(saved) : DEFAULT_CATEGORIES;
-  });
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [categoryDeletingName, setCategoryDeletingName] = useState<string | null>(null);
@@ -128,6 +124,15 @@ export default function App() {
       if (snap.exists()) setMonthlyBudget(snap.data().monthlyBudget || 0);
     });
 
+    const unsubCategories = onSnapshot(doc(db, 'budgets', 'categories_config'), (snap) => {
+      if (snap.exists() && snap.data().categories) {
+        setCategories(snap.data().categories);
+      } else {
+        // Initialize default categories in Firestore if they don't exist yet
+        setDoc(doc(db, 'budgets', 'categories_config'), { categories: DEFAULT_CATEGORIES }, { merge: true });
+      }
+    });
+
     // Dual orderBy: Firestore sorts by date then createdAt.
     // JS re-sort below handles the brief window where serverTimestamp is null
     // on newly-added docs before the server acknowledges — do NOT remove.
@@ -152,14 +157,8 @@ export default function App() {
       setLoading(false);
     });
 
-    return () => { unsubBudget(); unsubExpenses(); };
+    return () => { unsubBudget(); unsubCategories(); unsubExpenses(); };
   }, [isAuthenticated]);
-
-  // ── Persist categories ──────────────────────────────────────────────────────
-
-  useEffect(() => {
-    localStorage.setItem('budget_categories', JSON.stringify(categories));
-  }, [categories]);
 
   // ── Global click resets staging states ─────────────────────────────────────
 
@@ -178,7 +177,6 @@ export default function App() {
 
   useEffect(() => {
     if (!justAddedId) return;
-    // Wait for the ref to be registered after the expense list re-renders
     const tryFocus = () => {
       const targetInput = amountInputsRef.current[justAddedId];
       if (targetInput) {
@@ -188,20 +186,17 @@ export default function App() {
         setJustAddedId(null);
       }
     };
-    // Small delay allows the DOM to settle with the new ref attached
     const t = setTimeout(tryFocus, 100);
     return () => clearTimeout(t);
   }, [expenses, justAddedId]);
 
   // ── Debounced Firestore writers ─────────────────────────────────────────────
 
-  // FIX: was writing to Firestore on every keystroke — now debounced 500ms
   const debouncedUpdateCategory = useDebounce(
     (id: string, value: string) => updateDoc(doc(db, 'expenses', id), { category: value }),
     500
   );
 
-  // FIX: was writing to Firestore on every keystroke — now debounced 500ms
   const debouncedUpdateBudget = useDebounce(
     (val: number) => setDoc(doc(db, 'budgets', 'main_config'), { monthlyBudget: val }, { merge: true }),
     500
@@ -219,7 +214,7 @@ export default function App() {
     setJustAddedId(docRef.id);
   };
 
-  const handleAddCategorySubmit = (e: React.FormEvent) => {
+  const handleAddCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = newCategoryInput.trim();
     if (!trimmed) return;
@@ -227,14 +222,16 @@ export default function App() {
       window.alert("Category already exists!");
       return;
     }
-    setCategories(prev => [...prev, trimmed]);
+    
+    // Sync to Firestore instead of local state
+    const catRef = doc(db, 'budgets', 'categories_config');
+    await setDoc(catRef, { categories: arrayUnion(trimmed) }, { merge: true });
+
     setNewCategoryInput("");
     setIsModalOpen(false);
-    // Focus back on the button to prevent mobile viewport jumping
     setTimeout(() => addCategoryBtnRef.current?.focus(), 50);
   };
 
-  // FIX: was deleting all data with no confirmation — now requires two taps
   const handleClearAll = async () => {
     if (!clearAllStaging) {
       setClearAllStaging(true);
@@ -380,7 +377,7 @@ export default function App() {
                   onChange={(e) => {
                     const val = handleAmountMaskChange(e.target.value);
                     setMonthlyBudget(val);
-                    debouncedUpdateBudget(val); // FIX: debounced — was calling setDoc on every keystroke
+                    debouncedUpdateBudget(val);
                   }}
                 />
               </div>
@@ -401,8 +398,6 @@ export default function App() {
                 <div
                   key={cat}
                   style={{ width: `${(val / totalSpent) * 100}%` }}
-                  // FIX: removed group-hover tooltip — hover never fires on mobile touch.
-                  // Tapping already populates the selectedCategory panel below.
                   className={`${['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500'][i % 6]} transition-all cursor-pointer active:opacity-70`}
                   onClick={() => setSelectedCategory(selectedCategory?.name === cat ? null : { name: cat, amount: Number(val) })}
                 />
@@ -440,9 +435,11 @@ export default function App() {
                 {isStagingCategoryDelete ? (
                   <button
                     type="button"
-                    onPointerDown={(e) => {
+                    onPointerDown={async (e) => {
                       e.stopPropagation();
-                      setCategories(prev => prev.filter(c => c !== cat));
+                      // Sync deletion to Firestore
+                      const catRef = doc(db, 'budgets', 'categories_config');
+                      await setDoc(catRef, { categories: arrayRemove(cat) }, { merge: true });
                       setCategoryDeletingName(null);
                     }}
                     className="w-full bg-red-600 text-white border border-red-500 rounded-lg text-[11px] font-black tracking-wider uppercase flex items-center justify-center min-h-[54px] animate-fadeIn touch-manipulation"
@@ -450,8 +447,6 @@ export default function App() {
                     CONFIRM?
                   </button>
                 ) : (
-                  // FIX: delete button moved to bottom-right row so it doesn't overlap the main tap target.
-                  // This eliminates accidental deletions when tapping to add an expense.
                   <div className="w-full bg-zinc-900 border border-zinc-800/60 rounded-lg shadow-sm flex flex-col min-h-[54px] overflow-hidden">
                     <button
                       onClick={() => handleAddNewExpense(cat)}
@@ -512,14 +507,11 @@ export default function App() {
                 }`}
               >
                 <div className="flex-1 min-w-0">
-                  {/* Category + Amount row */}
                   <div className="flex justify-between mb-1 gap-2">
-                    {/* FIX: max-w prevents category from squeezing the amount field off-screen */}
                     <input
                       className="font-black text-zinc-100 bg-transparent focus:outline-none min-w-0 flex-1 max-w-[55%]"
                       value={exp.category}
                       onChange={(e) => {
-                        // FIX: was calling updateDoc on every keystroke — now debounced 500ms
                         debouncedUpdateCategory(exp.id, e.target.value);
                       }}
                     />
@@ -539,9 +531,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Date + actions row */}
                   <div className="flex justify-between text-zinc-500 items-center min-h-[28px]">
-                    {/* FIX: date input now styled as a visible pill badge — was nearly invisible at text-[10px] */}
                     <div className="flex items-center gap-1.5">
                       <Calendar size={12} className="shrink-0" />
                       <input
@@ -553,7 +543,6 @@ export default function App() {
                     </div>
 
                     <div className="flex items-center gap-2 pointer-events-auto shrink-0">
-                      {/* Select checkbox */}
                       <button
                         type="button"
                         onClick={() => handleToggleSelectExpense(exp.id)}
@@ -566,7 +555,6 @@ export default function App() {
                         {isSelected ? <Check size={12} className="stroke-[3]" /> : <Plus size={12} className="stroke-[3]" />}
                       </button>
 
-                      {/* Delete button with two-tap confirm */}
                       <div className="relative">
                         {isStagingDelete ? (
                           <button
@@ -603,7 +591,6 @@ export default function App() {
 
         {/* ── Bottom actions ── */}
         <div className="mt-12 mb-8 space-y-3">
-          {/* FIX: Clear All now requires two taps — first tap stages, second tap executes */}
           <button
             onPointerDown={(e) => { e.stopPropagation(); handleClearAll(); }}
             className={`w-full py-4 rounded-2xl border font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm touch-manipulation ${
