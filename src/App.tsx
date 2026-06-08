@@ -84,6 +84,9 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [categoryDeletingName, setCategoryDeletingName] = useState<string | null>(null);
+  const [quickAddCategory, setQuickAddCategory] = useState<string | null>(null);
+  const [quickAddAmount, setQuickAddAmount] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -285,6 +288,11 @@ export default function App() {
     );
   };
 
+  const showToast = (msg:string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  };
+
   // ── Derived data & Pagination bounds ───────────────────────────────────────
 
   const totalSpent = useMemo(() => expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0), [expenses]);
@@ -470,8 +478,11 @@ export default function App() {
                     type="button"
                     onPointerDown={async (e) => {
                       e.stopPropagation();
+                      const inUse = expenses.some(e => e.category === cat);
+                      if (inUse) { showToast('Cannot delete category with transactions'); return; }
                       const catRef = doc(db, 'budgets', 'categories_config');
                       await setDoc(catRef, { categories: arrayRemove(cat) }, { merge: true });
+                      showToast('Category deleted');
                       setCategoryDeletingName(null);
                     }}
                     className="w-full bg-red-600 text-white border border-red-500 rounded-lg text-[11px] font-black tracking-wider uppercase flex items-center justify-center min-h-[54px] animate-fadeIn touch-manipulation"
@@ -481,7 +492,7 @@ export default function App() {
                 ) : (
                   <div className="w-full bg-zinc-900 border border-zinc-800/60 rounded-lg shadow-sm flex flex-col min-h-[54px] overflow-hidden">
                     <button
-                      onClick={() => handleAddNewExpense(cat)}
+                      onClick={() => { setQuickAddCategory(cat); setQuickAddAmount(""); }}
                       className="flex-1 py-1.5 px-3 text-[11px] leading-tight font-black text-zinc-300 active:bg-blue-600 active:text-white transition-all uppercase truncate flex flex-col items-center justify-center touch-manipulation"
                     >
                       <span className="truncate w-full text-center">{cat}</span>
@@ -717,6 +728,44 @@ export default function App() {
           </div>
         </div>
       )}
+
+      
+      {quickAddCategory && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-zinc-900 p-6 rounded-3xl w-80">
+            <h3 className="font-black mb-4">{quickAddCategory}</h3>
+            <input
+              autoFocus
+              type="text"
+              inputMode="numeric"
+              value={quickAddAmount}
+              onChange={(e)=>setQuickAddAmount(e.target.value)}
+              className="w-full p-3 rounded bg-zinc-800"
+              placeholder="Amount"
+            />
+            <div className="flex gap-2 mt-4">
+              <button className="flex-1 bg-zinc-700 p-3 rounded" onClick={()=>setQuickAddCategory(null)}>Cancel</button>
+              <button className="flex-1 bg-blue-600 p-3 rounded" onClick={async()=>{
+                await addDoc(collection(db,'expenses'),{
+                  category: quickAddCategory,
+                  amount: handleAmountMaskChange(quickAddAmount),
+                  date: new Date().toISOString().split('T')[0],
+                  createdAt: serverTimestamp()
+                });
+                showToast('Expense added');
+                setQuickAddCategory(null);
+              }}>Add</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-4 py-2 rounded-xl z-50">
+          {toast}
+        </div>
+      )}
+
 
       {/* ── Selection total bar ── */}
       {selectedExpenseIds.length > 0 && (
