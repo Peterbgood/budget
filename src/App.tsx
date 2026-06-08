@@ -77,6 +77,7 @@ export default function App() {
   const [clearAllStaging, setClearAllStaging] = useState(false);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const amountInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
+  const addCategoryBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const [categories, setCategories] = useState<string[]>(() => {
     const saved = localStorage.getItem('budget_categories');
@@ -229,6 +230,8 @@ export default function App() {
     setCategories(prev => [...prev, trimmed]);
     setNewCategoryInput("");
     setIsModalOpen(false);
+    // Focus back on the button to prevent mobile viewport jumping
+    setTimeout(() => addCategoryBtnRef.current?.focus(), 50);
   };
 
   // FIX: was deleting all data with no confirmation — now requires two taps
@@ -456,7 +459,7 @@ export default function App() {
                     >
                       <span className="truncate w-full text-center">{cat}</span>
                       {catTotal > 0 && (
-                        <span className="text-zinc-500 font-bold shrink-0 mt-0.5">(${catTotal.toFixed(2)})</span>
+                        <span className="text-blue-400 font-black shrink-0 mt-0.5">(${catTotal.toFixed(2)})</span>
                       )}
                     </button>
                     <div className="border-t border-zinc-800/60 flex justify-end px-2 py-0.5">
@@ -480,6 +483,7 @@ export default function App() {
 
           {/* Add New button */}
           <button
+            ref={addCategoryBtnRef}
             onClick={() => setIsModalOpen(true)}
             className="py-1.5 px-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[11px] leading-tight font-black text-blue-400 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase flex flex-col items-center justify-center min-h-[54px] touch-manipulation gap-0.5"
           >
@@ -623,14 +627,14 @@ export default function App() {
 
       {/* ── Add Category modal ── */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 pt-16 sm:items-center sm:pt-4 z-50 animate-fadeIn">
           <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
                 <Plus size={14} className="text-blue-400" /> Add Custom Category
               </h3>
               <button
-                onClick={() => { setIsModalOpen(false); setNewCategoryInput(""); }}
+                onClick={() => { setIsModalOpen(false); setNewCategoryInput(""); setTimeout(() => addCategoryBtnRef.current?.focus(), 50); }}
                 className="text-zinc-500 hover:text-zinc-300 transition-colors touch-manipulation"
               >
                 <X size={18} />
@@ -648,7 +652,7 @@ export default function App() {
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => { setIsModalOpen(false); setNewCategoryInput(""); }}
+                  onClick={() => { setIsModalOpen(false); setNewCategoryInput(""); setTimeout(() => addCategoryBtnRef.current?.focus(), 50); }}
                   className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors touch-manipulation"
                 >
                   Cancel
