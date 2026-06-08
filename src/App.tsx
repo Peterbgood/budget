@@ -1,19 +1,24 @@
-import { useState, useEffect, useMemo, useRef } from 'react'; 
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { initializeApp } from "firebase/app";
-import { 
-  getFirestore, collection, query, orderBy, onSnapshot, 
-  addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc, writeBatch 
+import {
+  getFirestore, collection, query, orderBy, onSnapshot,
+  addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc, writeBatch,
+  Timestamp
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { Trash2, Calendar, ReceiptText, PieChart as PieIcon, X, Eraser, ClipboardCopy, Plus, Check, Clock } from 'lucide-react';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Expense {
   id: string;
   category: string;
   amount: number;
   date: string;
-  createdAt: any;
+  createdAt: Timestamp | null;
 }
+
+// ─── Firebase ────────────────────────────────────────────────────────────────
 
 const firebaseConfig = {
   apiKey: "AIzaSyDubrSy5eJ__fMycwDqGILFHRH1p8jMv-Y",
@@ -29,13 +34,35 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
 const DEFAULT_CATEGORIES = [
-  'Walmart', 'Chick-fil-A', 'McDonald\'s', "Salsarita's", 
-  'Food City', 'Target', 'Publix', 'Panda Express', 'Kroger', 
-  'Freddy\'s', 'Starbucks', 'Taco Bell', 'Dunkin', 'Amazon', 'Gas', 'Little Caesars', 'Panera', 'Cash'
+  'Walmart', 'Chick-fil-A', "McDonald's", "Salsarita's",
+  'Food City', 'Target', 'Publix', 'Panda Express', 'Kroger',
+  "Freddy's", 'Starbucks', 'Taco Bell', 'Dunkin', 'Amazon', 'Gas',
+  'Little Caesars', 'Panera', 'Cash'
 ];
 
+// NOTE: Move to an env variable (e.g. VITE_APP_PIN) for any non-personal deployment.
 const APP_PIN = "3270";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function useDebounce<T extends (...args: Parameters<T>) => void>(fn: T, delay: number): T {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  return useCallback((...args: Parameters<T>) => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => fn(...args), delay);
+  }, [fn, delay]) as T;
+}
+
+function handleAmountMaskChange(rawInputValue: string): number {
+  const digitsOnly = rawInputValue.replace(/\D/g, "");
+  if (!digitsOnly) return 0;
+  return parseInt(digitsOnly, 10) / 100;
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -46,27 +73,39 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<{ name: string; amount: number } | null>(null);
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // FIX: two-tap confirm for "Clear All"
+  const [clearAllStaging, setClearAllStaging] = useState(false);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const amountInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
 
-  // Dynamic Categories initialized from localStorage or defaults
   const [categories, setCategories] = useState<string[]>(() => {
     const saved = localStorage.getItem('budget_categories');
     return saved ? JSON.parse(saved) : DEFAULT_CATEGORIES;
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCategoryInput, setNewCategoryInput] = useState("");
-  
-  // Track which category button is currently showing the inline confirmation state
   const [categoryDeletingName, setCategoryDeletingName] = useState<string | null>(null);
+
+  // ── Auth ────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     signInAnonymously(auth).catch(console.error);
   }, []);
 
+  // ── PIN screen keyboard listener ────────────────────────────────────────────
+
   useEffect(() => {
-    localStorage.setItem('budget_categories', JSON.stringify(categories));
-  }, [categories]);
+    if (isAuthenticated) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key >= '0' && e.key <= '9') {
+        if (pinInput.length < 4) setPinInput(prev => prev + e.key);
+      } else if (e.key === 'Backspace') {
+        setPinInput(prev => prev.slice(0, -1));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pinInput, isAuthenticated]);
 
   useEffect(() => {
     if (pinInput.length === 4) {
@@ -79,40 +118,26 @@ export default function App() {
     }
   }, [pinInput]);
 
-  useEffect(() => {
-    if (isAuthenticated) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key >= '0' && e.key <= '9') { 
-        if (pinInput.length < 4) setPinInput(prev => prev + e.key); 
-      }
-      else if (e.key === 'Backspace') { 
-        setPinInput(prev => prev.slice(0, -1)); 
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pinInput, isAuthenticated]);
+  // ── Firestore subscriptions ─────────────────────────────────────────────────
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const unsubBudget = onSnapshot(doc(db, 'budgets', 'main_config'), (snap) => {
-      if (snap.exists()) {
-        setMonthlyBudget(snap.data().monthlyBudget || 0);
-      }
+      if (snap.exists()) setMonthlyBudget(snap.data().monthlyBudget || 0);
     });
 
+    // Dual orderBy: Firestore sorts by date then createdAt.
+    // JS re-sort below handles the brief window where serverTimestamp is null
+    // on newly-added docs before the server acknowledges — do NOT remove.
     const q = query(
-      collection(db, 'expenses'), 
-      orderBy('date', 'desc'), 
+      collection(db, 'expenses'),
+      orderBy('date', 'desc'),
       orderBy('createdAt', 'desc')
     );
 
     const unsubExpenses = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(d => ({ 
-        id: d.id, 
-        ...d.data() 
-      })) as Expense[];
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Expense[];
 
       const sortedData = data.sort((a, b) => {
         if (b.date !== a.date) return b.date.localeCompare(a.date);
@@ -126,43 +151,69 @@ export default function App() {
       setLoading(false);
     });
 
-    return () => {
-      unsubBudget();
-      unsubExpenses();
-    };
+    return () => { unsubBudget(); unsubExpenses(); };
   }, [isAuthenticated]);
 
-  // Handle outside pointers resetting any inline configurations
+  // ── Persist categories ──────────────────────────────────────────────────────
+
   useEffect(() => {
-    if (!deletingId && !categoryDeletingName) return;
+    localStorage.setItem('budget_categories', JSON.stringify(categories));
+  }, [categories]);
+
+  // ── Global click resets staging states ─────────────────────────────────────
+
+  useEffect(() => {
+    if (!deletingId && !categoryDeletingName && !clearAllStaging) return;
     const handleGlobalClick = () => {
       setDeletingId(null);
       setCategoryDeletingName(null);
+      setClearAllStaging(false);
     };
     window.addEventListener('pointerdown', handleGlobalClick);
     return () => window.removeEventListener('pointerdown', handleGlobalClick);
-  }, [deletingId, categoryDeletingName]);
+  }, [deletingId, categoryDeletingName, clearAllStaging]);
+
+  // ── Auto-focus newly added expense input ────────────────────────────────────
 
   useEffect(() => {
-    if (justAddedId && amountInputsRef.current[justAddedId]) {
+    if (!justAddedId) return;
+    // Wait for the ref to be registered after the expense list re-renders
+    const tryFocus = () => {
       const targetInput = amountInputsRef.current[justAddedId];
       if (targetInput) {
-        setTimeout(() => {
-          targetInput.focus();
-          targetInput.select();
-          targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
+        targetInput.focus();
+        targetInput.select();
+        targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setJustAddedId(null);
       }
-      setJustAddedId(null);
-    }
+    };
+    // Small delay allows the DOM to settle with the new ref attached
+    const t = setTimeout(tryFocus, 100);
+    return () => clearTimeout(t);
   }, [expenses, justAddedId]);
 
+  // ── Debounced Firestore writers ─────────────────────────────────────────────
+
+  // FIX: was writing to Firestore on every keystroke — now debounced 500ms
+  const debouncedUpdateCategory = useDebounce(
+    (id: string, value: string) => updateDoc(doc(db, 'expenses', id), { category: value }),
+    500
+  );
+
+  // FIX: was writing to Firestore on every keystroke — now debounced 500ms
+  const debouncedUpdateBudget = useDebounce(
+    (val: number) => setDoc(doc(db, 'budgets', 'main_config'), { monthlyBudget: val }, { merge: true }),
+    500
+  );
+
+  // ── CRUD handlers ───────────────────────────────────────────────────────────
+
   const handleAddNewExpense = async (categoryName: string) => {
-    const docRef = await addDoc(collection(db, 'expenses'), { 
-      category: categoryName, 
-      amount: 0, 
-      date: new Date().toISOString().split('T')[0], 
-      createdAt: serverTimestamp() 
+    const docRef = await addDoc(collection(db, 'expenses'), {
+      category: categoryName,
+      amount: 0,
+      date: new Date().toISOString().split('T')[0],
+      createdAt: serverTimestamp()
     });
     setJustAddedId(docRef.id);
   };
@@ -171,22 +222,26 @@ export default function App() {
     e.preventDefault();
     const trimmed = newCategoryInput.trim();
     if (!trimmed) return;
-    
     if (categories.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
       window.alert("Category already exists!");
       return;
     }
-
     setCategories(prev => [...prev, trimmed]);
     setNewCategoryInput("");
     setIsModalOpen(false);
   };
 
+  // FIX: was deleting all data with no confirmation — now requires two taps
   const handleClearAll = async () => {
+    if (!clearAllStaging) {
+      setClearAllStaging(true);
+      return;
+    }
     const batch = writeBatch(db);
     expenses.forEach(exp => batch.delete(doc(db, 'expenses', exp.id)));
     await batch.commit();
     setSelectedExpenseIds([]);
+    setClearAllStaging(false);
   };
 
   const handleCopyToClipboard = async () => {
@@ -194,16 +249,9 @@ export default function App() {
       window.alert("No transactions to export.");
       return;
     }
-    
     const headers = ["Date", "Category", "Amount ($)"];
-    const rows = expenses.map(exp => [
-      exp.date,
-      exp.category,
-      exp.amount.toFixed(2)
-    ]);
-    
+    const rows = expenses.map(exp => [exp.date, exp.category, exp.amount.toFixed(2)]);
     const spreadsheetContent = [headers.join("\t"), ...rows.map(e => e.join("\t"))].join("\n");
-    
     try {
       await navigator.clipboard.writeText(spreadsheetContent);
       window.alert("Spreadsheet rows copied to clipboard! Paste (Ctrl+V) directly into Google Sheets.");
@@ -212,11 +260,13 @@ export default function App() {
     }
   };
 
-  const handleAmountMaskChange = (rawInputValue: string): number => {
-    const digitsOnly = rawInputValue.replace(/\D/g, "");
-    if (!digitsOnly) return 0;
-    return parseInt(digitsOnly, 10) / 100;
+  const handleToggleSelectExpense = (id: string) => {
+    setSelectedExpenseIds(prev =>
+      prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
+    );
   };
+
+  // ── Derived data ────────────────────────────────────────────────────────────
 
   const totalSpent = useMemo(() => expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0), [expenses]);
   const remaining = monthlyBudget - totalSpent;
@@ -225,82 +275,63 @@ export default function App() {
     const today = new Date();
     let targetYear = today.getFullYear();
     let targetMonth = today.getMonth();
-
     if (today.getDate() >= 13) {
       targetMonth += 1;
-      if (targetMonth > 11) {
-        targetMonth = 0;
-        targetYear += 1;
-      }
+      if (targetMonth > 11) { targetMonth = 0; targetYear += 1; }
     }
-
     const targetDate = new Date(targetYear, targetMonth, 13);
     const currentMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    
-    const differenceInMs = targetDate.getTime() - currentMidnight.getTime();
-    return Math.ceil(differenceInMs / (1000 * 60 * 60 * 24));
+    return Math.ceil((targetDate.getTime() - currentMidnight.getTime()) / (1000 * 60 * 60 * 24));
   }, []);
 
   const categoryTotalsMap = useMemo(() => {
     const map: Record<string, number> = {};
-    expenses.forEach(e => {
-      map[e.category] = (map[e.category] || 0) + (Number(e.amount) || 0);
-    });
+    expenses.forEach(e => { map[e.category] = (map[e.category] || 0) + (Number(e.amount) || 0); });
     return map;
   }, [expenses]);
 
-  const sortedCategories = useMemo(() => {
-    return [...categories].sort((a, b) => {
-      const totalA = categoryTotalsMap[a] || 0;
-      const totalB = categoryTotalsMap[b] || 0;
-      return totalB - totalA;
-    });
-  }, [categoryTotalsMap, categories]);
+  const sortedCategories = useMemo(() => (
+    [...categories].sort((a, b) => (categoryTotalsMap[b] || 0) - (categoryTotalsMap[a] || 0))
+  ), [categoryTotalsMap, categories]);
 
-  const chartData = useMemo(() => {
-    return Object.entries(categoryTotalsMap)
-      .filter(([_, value]) => value > 0)
-      .sort((a, b) => b[1] - a[1]);
-  }, [categoryTotalsMap]);
+  const chartData = useMemo(() => (
+    Object.entries(categoryTotalsMap).filter(([_, v]) => v > 0).sort((a, b) => b[1] - a[1])
+  ), [categoryTotalsMap]);
 
-  const handleToggleSelectExpense = (id: string) => {
-    setSelectedExpenseIds(prev => 
-      prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
-    );
-  };
+  const selectedLinesTotal = useMemo(() => (
+    expenses.filter(e => selectedExpenseIds.includes(e.id)).reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+  ), [selectedExpenseIds, expenses]);
 
-  const selectedLinesTotal = useMemo(() => {
-    return expenses
-      .filter(e => selectedExpenseIds.includes(e.id))
-      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-  }, [selectedExpenseIds, expenses]);
+  // ── PIN screen ──────────────────────────────────────────────────────────────
 
   if (!isAuthenticated) {
     return (
       <div className="h-screen bg-black flex flex-col items-center justify-center p-6 text-white">
         <div className="w-full max-w-[300px] flex flex-col items-center">
           <p className="text-2xl font-bold mb-8">Enter PIN</p>
-          
           <div className="flex gap-4 mb-10">
             {[0, 1, 2, 3].map(i => (
               <div key={i} className={`w-3 h-3 rounded-full transition-all duration-200 ${pinInput.length > i ? 'bg-white' : 'bg-white/20'}`} />
             ))}
           </div>
-
           <div className="grid grid-cols-3 gap-4 select-none w-full">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-              <button 
-                key={n} 
-                onClick={() => pinInput.length < 4 && setPinInput(prev => prev + n)} 
-                className="h-20 rounded-2xl bg-[#1c1c1e] text-2xl font-medium active:bg-[#3a3a3c] transition-all"
+              <button
+                key={n}
+                onClick={() => pinInput.length < 4 && setPinInput(prev => prev + n)}
+                className="h-20 rounded-2xl bg-[#1c1c1e] text-2xl font-medium active:bg-[#3a3a3c] transition-all touch-manipulation"
               >
                 {n}
               </button>
             ))}
-            <button onClick={() => setPinInput("")} className="h-20 rounded-2xl bg-[#1c1c1e] text-xl font-medium active:bg-[#3a3a3c] transition-all">C</button>
-            <button onClick={() => pinInput.length < 4 && setPinInput(prev => prev + "0")} className="h-20 rounded-2xl bg-[#1c1c1e] text-2xl font-medium active:bg-[#3a3a3c] transition-all">0</button>
-            <button onClick={() => setPinInput(prev => prev.slice(0, -1))} className="h-20 rounded-2xl bg-[#1c1c1e] flex items-center justify-center active:bg-[#3a3a3c] transition-all">
-              <svg width="28" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff453a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
+            <button onClick={() => setPinInput("")} className="h-20 rounded-2xl bg-[#1c1c1e] text-xl font-medium active:bg-[#3a3a3c] transition-all touch-manipulation">C</button>
+            <button onClick={() => pinInput.length < 4 && setPinInput(prev => prev + "0")} className="h-20 rounded-2xl bg-[#1c1c1e] text-2xl font-medium active:bg-[#3a3a3c] transition-all touch-manipulation">0</button>
+            <button onClick={() => setPinInput(prev => prev.slice(0, -1))} className="h-20 rounded-2xl bg-[#1c1c1e] flex items-center justify-center active:bg-[#3a3a3c] transition-all touch-manipulation">
+              <svg width="28" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff453a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
+                <line x1="18" y1="9" x2="12" y2="15" />
+                <line x1="12" y1="9" x2="18" y2="15" />
+              </svg>
             </button>
           </div>
         </div>
@@ -308,22 +339,28 @@ export default function App() {
     );
   }
 
-  if (loading) return <div className="h-screen bg-zinc-950 flex items-center justify-center font-black text-zinc-700 uppercase tracking-widest">Syncing...</div>;
+  if (loading) return (
+    <div className="h-screen bg-zinc-950 flex items-center justify-center font-black text-zinc-700 uppercase tracking-widest">
+      Syncing...
+    </div>
+  );
+
+  // ── Main UI ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 pb-32">
+
+      {/* ── Summary card ── */}
       <div className="px-4 pt-6 mb-6">
         <div className="max-w-xl mx-auto bg-zinc-900 rounded-3xl shadow-xl p-6 border border-zinc-800/80">
           <div className="text-center mb-6 relative">
             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Remaining</p>
-            <div className="flex flex-col items-center justify-center relative">
-              <p className={`text-4xl font-black ${remaining < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                {remaining < 0 ? '-' : ''}${Math.abs(remaining).toFixed(2)}
-              </p>
-              <div className="mt-1 flex items-center gap-1 text-[9px] font-black uppercase text-zinc-400 bg-zinc-950 border border-zinc-800 px-2 py-0.5 rounded-full shadow-inner tracking-wider">
-                <Clock size={10} className="text-zinc-500" />
-                <span>{daysUntilNext13th} days left until 13th</span>
-              </div>
+            <p className={`text-4xl font-black ${remaining < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+              {remaining < 0 ? '-' : ''}${Math.abs(remaining).toFixed(2)}
+            </p>
+            <div className="mt-1 flex items-center justify-center gap-1 text-[9px] font-black uppercase text-zinc-400 bg-zinc-950 border border-zinc-800 px-2 py-0.5 rounded-full shadow-inner tracking-wider w-fit mx-auto">
+              <Clock size={10} className="text-zinc-500" />
+              <span>{daysUntilNext13th} days left until 13th</span>
             </div>
           </div>
 
@@ -332,16 +369,16 @@ export default function App() {
               <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Budget</p>
               <div className="flex items-center justify-center gap-1">
                 <span className="text-xl font-black text-zinc-700">$</span>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   inputMode="numeric"
-                  className="text-2xl font-black focus:outline-none w-28 bg-transparent text-center text-zinc-100" 
-                  value={(monthlyBudget || 0).toFixed(2)} 
+                  className="text-2xl font-black focus:outline-none w-28 bg-transparent text-center text-zinc-100"
+                  value={(monthlyBudget || 0).toFixed(2)}
                   onChange={(e) => {
                     const val = handleAmountMaskChange(e.target.value);
                     setMonthlyBudget(val);
-                    setDoc(doc(db, 'budgets', 'main_config'), { monthlyBudget: val }, { merge: true });
-                  }} 
+                    debouncedUpdateBudget(val); // FIX: debounced — was calling setDoc on every keystroke
+                  }}
                 />
               </div>
             </div>
@@ -350,162 +387,188 @@ export default function App() {
               <p className="text-2xl font-black text-zinc-200">${totalSpent.toFixed(2)}</p>
             </div>
           </div>
-          
-          <div className="mt-4">
-             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-1">
-               <PieIcon size={12} /> Visual Breakdown
-             </p>
-             <div className="flex h-8 w-full rounded-xl overflow-hidden bg-zinc-950 shadow-inner mb-4">
-               {chartData.map(([cat, val], i) => (
-                 <div 
-                   key={cat} 
-                   style={{ width: `${(val / totalSpent) * 100}%` }} 
-                   className={`${['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500'][i % 6]} transition-all hover:opacity-80 group relative cursor-pointer`}
-                   onClick={() => {
-                     if (selectedCategory?.name === cat) {
-                       setSelectedCategory(null);
-                     } else {
-                       setSelectedCategory({ name: cat, amount: Number(val) });
-                     }
-                   }}
-                 >
-                    <div className="absolute bottom-full mb-2 hidden group-hover:block bg-zinc-800 text-zinc-100 text-[10px] py-1 px-2 rounded whitespace-nowrap z-50 shadow-lg border border-zinc-700">
-                      {cat}: ${Number(val).toFixed(2)}
-                    </div>
-                 </div>
-               ))}
-             </div>
 
-             {selectedCategory && (
-               <div className="mb-4 p-3 bg-zinc-800/40 border border-zinc-800 rounded-xl flex items-center justify-between animate-fadeIn">
-                 <div className="text-[11px] font-black uppercase text-zinc-400 tracking-wider flex items-center gap-2">
-                   <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
-                   Selected: <span className="text-zinc-100">{selectedCategory.name}</span>
-                 </div>
-                 <div className="flex items-center gap-3">
-                   <span className="text-sm font-black text-blue-400">${selectedCategory.amount.toFixed(2)}</span>
-                   <button onClick={() => setSelectedCategory(null)} className="text-zinc-500 hover:text-zinc-300"><X size={14}/></button>
-                 </div>
-               </div>
-             )}
+          {/* ── Bar chart ── */}
+          <div className="mt-4">
+            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-1">
+              <PieIcon size={12} /> Visual Breakdown
+            </p>
+            <div className="flex h-8 w-full rounded-xl overflow-hidden bg-zinc-950 shadow-inner mb-4">
+              {chartData.map(([cat, val], i) => (
+                <div
+                  key={cat}
+                  style={{ width: `${(val / totalSpent) * 100}%` }}
+                  // FIX: removed group-hover tooltip — hover never fires on mobile touch.
+                  // Tapping already populates the selectedCategory panel below.
+                  className={`${['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500'][i % 6]} transition-all cursor-pointer active:opacity-70`}
+                  onClick={() => setSelectedCategory(selectedCategory?.name === cat ? null : { name: cat, amount: Number(val) })}
+                />
+              ))}
+            </div>
+
+            {selectedCategory && (
+              <div className="mb-4 p-3 bg-zinc-800/40 border border-zinc-800 rounded-xl flex items-center justify-between animate-fadeIn">
+                <div className="text-[11px] font-black uppercase text-zinc-400 tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                  Selected: <span className="text-zinc-100">{selectedCategory.name}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-black text-blue-400">${selectedCategory.amount.toFixed(2)}</span>
+                  <button onClick={() => setSelectedCategory(null)} className="text-zinc-500 hover:text-zinc-300 touch-manipulation">
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <main className="max-w-xl mx-auto px-4 mt-8">
-        {/* Adjusted grid to 2 columns with slightly larger gap for readability */}
+
+        {/* ── Category buttons ── */}
         <div className="grid grid-cols-2 gap-2 mb-8">
           {sortedCategories.map(cat => {
             const catTotal = categoryTotalsMap[cat] || 0;
             const isStagingCategoryDelete = categoryDeletingName === cat;
 
             return (
-              <div key={cat} className="relative group">
+              <div key={cat} className="relative">
                 {isStagingCategoryDelete ? (
-                  <button 
+                  <button
                     type="button"
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       setCategories(prev => prev.filter(c => c !== cat));
                       setCategoryDeletingName(null);
                     }}
-                    className="w-full bg-red-600 text-white border border-red-500 rounded-lg text-[11px] font-black tracking-wider uppercase flex items-center justify-center min-h-[46px] animate-fadeIn touch-manipulation"
+                    className="w-full bg-red-600 text-white border border-red-500 rounded-lg text-[11px] font-black tracking-wider uppercase flex items-center justify-center min-h-[54px] animate-fadeIn touch-manipulation"
                   >
                     CONFIRM?
                   </button>
                 ) : (
-                  <>
-                    <button 
-                      onClick={() => handleAddNewExpense(cat)} 
-                      className="w-full py-1.5 px-2 bg-zinc-900 border border-zinc-800/60 rounded-lg text-[11px] leading-tight font-black text-zinc-300 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate flex flex-col items-center justify-center min-h-[46px] touch-manipulation"
-                    >
-                      <span className="truncate pr-4">{cat}</span>
-                      {catTotal > 0 && <span className="text-zinc-500 font-bold shrink-0 mt-0.5">(${catTotal.toFixed(2)})</span>}
-                    </button>
+                  // FIX: delete button moved to bottom-right row so it doesn't overlap the main tap target.
+                  // This eliminates accidental deletions when tapping to add an expense.
+                  <div className="w-full bg-zinc-900 border border-zinc-800/60 rounded-lg shadow-sm flex flex-col min-h-[54px] overflow-hidden">
                     <button
-                      type="button"
-                      onPointerDown={(e) => {
-                        e.stopPropagation();
-                        setCategoryDeletingName(cat);
-                      }}
-                      className="absolute top-1 right-1 text-zinc-600 hover:text-red-400 active:text-red-500 p-1 rounded transition-colors touch-manipulation"
-                      title={`Delete ${cat}`}
+                      onClick={() => handleAddNewExpense(cat)}
+                      className="flex-1 py-1.5 px-3 text-[11px] leading-tight font-black text-zinc-300 active:bg-blue-600 active:text-white transition-all uppercase truncate flex flex-col items-center justify-center touch-manipulation"
                     >
-                      <X size={10} className="stroke-[3]" />
+                      <span className="truncate w-full text-center">{cat}</span>
+                      {catTotal > 0 && (
+                        <span className="text-zinc-500 font-bold shrink-0 mt-0.5">(${catTotal.toFixed(2)})</span>
+                      )}
                     </button>
-                  </>
+                    <div className="border-t border-zinc-800/60 flex justify-end px-2 py-0.5">
+                      <button
+                        type="button"
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          setCategoryDeletingName(cat);
+                        }}
+                        className="text-zinc-600 active:text-red-400 p-1 rounded transition-colors touch-manipulation"
+                        title={`Delete ${cat}`}
+                      >
+                        <X size={10} className="stroke-[3]" />
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             );
           })}
-          
-          <button 
-            onClick={() => setIsModalOpen(true)} 
-            className="py-1.5 px-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[11px] leading-tight font-black text-blue-400 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase flex flex-col items-center justify-center min-h-[46px] touch-manipulation gap-0.5"
+
+          {/* Add New button */}
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="py-1.5 px-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[11px] leading-tight font-black text-blue-400 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase flex flex-col items-center justify-center min-h-[54px] touch-manipulation gap-0.5"
           >
             <Plus size={12} className="stroke-[3]" />
             <span>Add New</span>
           </button>
         </div>
 
+        {/* ── Transaction history ── */}
         <div className="space-y-3">
-          <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 flex items-center gap-2"><ReceiptText size={12}/> History</h2>
+          <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+            <ReceiptText size={12} /> History
+          </h2>
+
           {expenses.map(exp => {
             const isSelected = selectedExpenseIds.includes(exp.id);
             const isStagingDelete = deletingId === exp.id;
-            
+
             return (
-              <div 
-                key={exp.id} 
+              <div
+                key={exp.id}
                 className={`p-4 rounded-2xl border transition-all duration-150 flex items-center gap-3.5 shadow-sm select-none ${
-                  isSelected 
-                    ? 'bg-blue-950/40 border-blue-800 ring-2 ring-blue-500/20' 
-                    : 'bg-zinc-900 border-zinc-800/80 hover:border-zinc-700'
+                  isSelected
+                    ? 'bg-blue-950/40 border-blue-800 ring-2 ring-blue-500/20'
+                    : 'bg-zinc-900 border-zinc-800/80'
                 }`}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex justify-between mb-1">
-                    <input className="font-black text-zinc-100 bg-transparent focus:outline-none w-full" value={exp.category} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { category: e.target.value })} />
-                    <div className="flex items-center text-blue-400 font-black">
+                  {/* Category + Amount row */}
+                  <div className="flex justify-between mb-1 gap-2">
+                    {/* FIX: max-w prevents category from squeezing the amount field off-screen */}
+                    <input
+                      className="font-black text-zinc-100 bg-transparent focus:outline-none min-w-0 flex-1 max-w-[55%]"
+                      value={exp.category}
+                      onChange={(e) => {
+                        // FIX: was calling updateDoc on every keystroke — now debounced 500ms
+                        debouncedUpdateCategory(exp.id, e.target.value);
+                      }}
+                    />
+                    <div className="flex items-center text-blue-400 font-black flex-shrink-0">
                       <span className="text-sm mr-0.5">$</span>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         inputMode="numeric"
                         ref={el => { amountInputsRef.current[exp.id] = el; }}
-                        className="w-20 text-right bg-transparent focus:outline-none text-zinc-100" 
-                        value={(exp.amount || 0).toFixed(2)} 
+                        className="w-20 text-right bg-transparent focus:outline-none text-zinc-100"
+                        value={(exp.amount || 0).toFixed(2)}
                         onChange={(e) => {
                           const val = handleAmountMaskChange(e.target.value);
                           updateDoc(doc(db, 'expenses', exp.id), { amount: val });
-                        }} 
+                        }}
                       />
                     </div>
                   </div>
-                  <div className="flex justify-between text-zinc-500 items-center min-h-[24px]">
-                    <div className="flex items-center gap-1">
-                      <Calendar size={12} />
-                      <input type="date" className="text-[10px] bg-transparent focus:outline-none font-bold uppercase text-zinc-400" value={exp.date} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { date: e.target.value })} />
+
+                  {/* Date + actions row */}
+                  <div className="flex justify-between text-zinc-500 items-center min-h-[28px]">
+                    {/* FIX: date input now styled as a visible pill badge — was nearly invisible at text-[10px] */}
+                    <div className="flex items-center gap-1.5">
+                      <Calendar size={12} className="shrink-0" />
+                      <input
+                        type="date"
+                        className="text-[11px] bg-zinc-800 border border-zinc-700 rounded-full px-2 py-0.5 focus:outline-none focus:border-blue-500 font-bold text-zinc-300 transition-colors touch-manipulation"
+                        value={exp.date}
+                        onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { date: e.target.value })}
+                      />
                     </div>
-                    
+
                     <div className="flex items-center gap-2 pointer-events-auto shrink-0">
+                      {/* Select checkbox */}
                       <button
                         type="button"
                         onClick={() => handleToggleSelectExpense(exp.id)}
                         className={`w-6 h-6 rounded-lg border transition-all flex items-center justify-center touch-manipulation ${
-                          isSelected 
-                            ? 'bg-blue-500 border-blue-500 text-white shadow-sm' 
-                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                          isSelected
+                            ? 'bg-blue-500 border-blue-500 text-white shadow-sm'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400'
                         }`}
                       >
                         {isSelected ? <Check size={12} className="stroke-[3]" /> : <Plus size={12} className="stroke-[3]" />}
                       </button>
 
+                      {/* Delete button with two-tap confirm */}
                       <div className="relative">
                         {isStagingDelete ? (
-                          <button 
+                          <button
                             type="button"
                             onPointerDown={(e) => {
-                              e.stopPropagation(); 
+                              e.stopPropagation();
                               deleteDoc(doc(db, 'expenses', exp.id));
                               setDeletingId(null);
                             }}
@@ -514,13 +577,13 @@ export default function App() {
                             CONFIRM?
                           </button>
                         ) : (
-                          <button 
+                          <button
                             type="button"
                             onPointerDown={(e) => {
-                              e.stopPropagation(); 
+                              e.stopPropagation();
                               setDeletingId(exp.id);
-                            }} 
-                            className="text-zinc-700 hover:text-red-400 p-1 rounded transition-colors touch-manipulation"
+                            }}
+                            className="text-zinc-700 active:text-red-400 p-1 rounded transition-colors touch-manipulation"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -534,24 +597,31 @@ export default function App() {
           })}
         </div>
 
+        {/* ── Bottom actions ── */}
         <div className="mt-12 mb-8 space-y-3">
-          <button 
-            onClick={handleClearAll} 
-            className="w-full py-4 bg-red-950/20 text-red-400 rounded-2xl border border-red-900/50 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-900/40 transition-all shadow-sm touch-manipulation"
+          {/* FIX: Clear All now requires two taps — first tap stages, second tap executes */}
+          <button
+            onPointerDown={(e) => { e.stopPropagation(); handleClearAll(); }}
+            className={`w-full py-4 rounded-2xl border font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm touch-manipulation ${
+              clearAllStaging
+                ? 'bg-red-600 text-white border-red-500'
+                : 'bg-red-950/20 text-red-400 border-red-900/50 hover:bg-red-900/40'
+            }`}
           >
-            <Eraser size={14}/> Clear All Transactions
+            <Eraser size={14} />
+            {clearAllStaging ? 'TAP AGAIN TO CONFIRM' : 'Clear All Transactions'}
           </button>
-          
-          <button 
-            onClick={handleCopyToClipboard} 
+
+          <button
+            onClick={handleCopyToClipboard}
             className="w-full py-4 bg-zinc-900 text-zinc-300 rounded-2xl border border-zinc-800 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all shadow-sm touch-manipulation"
           >
-            <ClipboardCopy size={14}/> Copy to Spreadsheet
+            <ClipboardCopy size={14} /> Copy to Spreadsheet
           </button>
         </div>
       </main>
 
-      {/* Dynamic Category Overlay Modal */}
+      {/* ── Add Category modal ── */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl">
@@ -559,16 +629,15 @@ export default function App() {
               <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
                 <Plus size={14} className="text-blue-400" /> Add Custom Category
               </h3>
-              <button 
+              <button
                 onClick={() => { setIsModalOpen(false); setNewCategoryInput(""); }}
-                className="text-zinc-500 hover:text-zinc-300 transition-colors"
+                className="text-zinc-500 hover:text-zinc-300 transition-colors touch-manipulation"
               >
                 <X size={18} />
               </button>
             </div>
-            
             <form onSubmit={handleAddCategorySubmit} className="space-y-4">
-              <input 
+              <input
                 type="text"
                 autoFocus
                 placeholder="e.g., Taco Bell, Home Depot..."
@@ -577,16 +646,16 @@ export default function App() {
                 onChange={(e) => setNewCategoryInput(e.target.value)}
               />
               <div className="flex gap-3 pt-2">
-                <button 
+                <button
                   type="button"
                   onClick={() => { setIsModalOpen(false); setNewCategoryInput(""); }}
-                  className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors"
+                  className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors touch-manipulation"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
-                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors"
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors touch-manipulation"
                 >
                   Add Button
                 </button>
@@ -596,6 +665,7 @@ export default function App() {
         </div>
       )}
 
+      {/* ── Selection total bar ── */}
       {selectedExpenseIds.length > 0 && (
         <div className="fixed bottom-6 left-0 right-0 px-4 z-50 pointer-events-none flex justify-center animate-slideUp">
           <div className="pointer-events-auto bg-zinc-900/95 backdrop-blur text-white py-3.5 px-6 rounded-2xl shadow-2xl border border-zinc-800 flex items-center justify-between gap-6 max-w-sm w-full">
@@ -607,8 +677,8 @@ export default function App() {
                 ${selectedLinesTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
-            <button 
-              onClick={() => setSelectedExpenseIds([])} 
+            <button
+              onClick={() => setSelectedExpenseIds([])}
               className="p-2 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white transition-colors touch-manipulation"
               title="Clear selection"
             >
