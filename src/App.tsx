@@ -5,7 +5,7 @@ import {
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc, writeBatch 
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { Trash2, Calendar, ReceiptText, PieChart as PieIcon, X, Eraser, Download, Plus, Check, Clock } from 'lucide-react';
+import { Trash2, Calendar, ReceiptText, PieChart as PieIcon, X, Eraser, ClipboardCopy, Plus, Check, Clock } from 'lucide-react';
 
 interface Expense {
   id: string;
@@ -29,10 +29,10 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   'Walmart', 'Chick-fil-A', 'McDonald\'s', "Salsarita's", 
   'Food City', 'Target', 'Publix', 'Panda Express', 'Kroger', 
-  'Freddy\'s', 'Starbucks', 'Taco Bell', 'Dunkin', 'Amazon', 'Gas', 'Little Caesars', 'Panera', 'Great Clips', 'Cash', 'Misc'
+  'Freddy\'s', 'Starbucks', 'Taco Bell', 'Dunkin', 'Amazon', 'Gas', 'Little Caesars', 'Panera', 'Cash'
 ];
 
 const APP_PIN = "3270";
@@ -49,9 +49,24 @@ export default function App() {
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const amountInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
 
+  // Dynamic Categories initialized from localStorage or defaults
+  const [categories, setCategories] = useState<string[]>(() => {
+    const saved = localStorage.getItem('budget_categories');
+    return saved ? JSON.parse(saved) : DEFAULT_CATEGORIES;
+  });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState("");
+  
+  // Track which category button is currently showing the inline confirmation state
+  const [categoryDeletingName, setCategoryDeletingName] = useState<string | null>(null);
+
   useEffect(() => {
     signInAnonymously(auth).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('budget_categories', JSON.stringify(categories));
+  }, [categories]);
 
   useEffect(() => {
     if (pinInput.length === 4) {
@@ -117,12 +132,16 @@ export default function App() {
     };
   }, [isAuthenticated]);
 
+  // Handle outside pointers resetting any inline configurations
   useEffect(() => {
-    if (!deletingId) return;
-    const handleGlobalClick = () => setDeletingId(null);
+    if (!deletingId && !categoryDeletingName) return;
+    const handleGlobalClick = () => {
+      setDeletingId(null);
+      setCategoryDeletingName(null);
+    };
     window.addEventListener('pointerdown', handleGlobalClick);
     return () => window.removeEventListener('pointerdown', handleGlobalClick);
-  }, [deletingId]);
+  }, [deletingId, categoryDeletingName]);
 
   useEffect(() => {
     if (justAddedId && amountInputsRef.current[justAddedId]) {
@@ -148,34 +167,50 @@ export default function App() {
     setJustAddedId(docRef.id);
   };
 
+  const handleAddCategorySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newCategoryInput.trim();
+    if (!trimmed) return;
+    
+    if (categories.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+      window.alert("Category already exists!");
+      return;
+    }
+
+    setCategories(prev => [...prev, trimmed]);
+    setNewCategoryInput("");
+    setIsModalOpen(false);
+  };
+
   const handleClearAll = async () => {
-    if (!window.confirm("Delete all transactions?")) return;
+    // Keep internal logic without prompt since native alerts are blocked
     const batch = writeBatch(db);
     expenses.forEach(exp => batch.delete(doc(db, 'expenses', exp.id)));
     await batch.commit();
     setSelectedExpenseIds([]);
   };
 
-  const handleExportCSV = () => {
+  const handleCopyToClipboard = async () => {
     if (expenses.length === 0) {
       window.alert("No transactions to export.");
       return;
     }
+    
     const headers = ["Date", "Category", "Amount ($)"];
     const rows = expenses.map(exp => [
       exp.date,
-      `"${exp.category.replace(/"/g, '""')}"`,
+      exp.category,
       exp.amount.toFixed(2)
     ]);
-    const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `expenses_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    
+    const spreadsheetContent = [headers.join("\t"), ...rows.map(e => e.join("\t"))].join("\n");
+    
+    try {
+      await navigator.clipboard.writeText(spreadsheetContent);
+      window.alert("Spreadsheet rows copied to clipboard! Paste (Ctrl+V) directly into Google Sheets.");
+    } catch (err) {
+      console.error("Clipboard copy failure:", err);
+    }
   };
 
   const handleAmountMaskChange = (rawInputValue: string): number => {
@@ -216,12 +251,12 @@ export default function App() {
   }, [expenses]);
 
   const sortedCategories = useMemo(() => {
-    return [...CATEGORIES].sort((a, b) => {
+    return [...categories].sort((a, b) => {
       const totalA = categoryTotalsMap[a] || 0;
       const totalB = categoryTotalsMap[b] || 0;
       return totalB - totalA;
     });
-  }, [categoryTotalsMap]);
+  }, [categoryTotalsMap, categories]);
 
   const chartData = useMemo(() => {
     return Object.entries(categoryTotalsMap)
@@ -274,34 +309,34 @@ export default function App() {
     );
   }
 
-  if (loading) return <div className="h-screen bg-slate-50 flex items-center justify-center font-black text-slate-300 uppercase tracking-widest">Syncing...</div>;
+  if (loading) return <div className="h-screen bg-zinc-950 flex items-center justify-center font-black text-zinc-700 uppercase tracking-widest">Syncing...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-32">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 pb-32">
       <div className="px-4 pt-6 mb-6">
-        <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-xl p-6 border border-white">
+        <div className="max-w-xl mx-auto bg-zinc-900 rounded-3xl shadow-xl p-6 border border-zinc-800/80">
           <div className="text-center mb-6 relative">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Remaining</p>
+            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Remaining</p>
             <div className="flex flex-col items-center justify-center relative">
-              <p className={`text-4xl font-black ${remaining < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+              <p className={`text-4xl font-black ${remaining < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                 {remaining < 0 ? '-' : ''}${Math.abs(remaining).toFixed(2)}
               </p>
-              <div className="mt-1 flex items-center gap-1 text-[9px] font-black uppercase text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full shadow-inner tracking-wider">
-                <Clock size={10} className="text-slate-400" />
+              <div className="mt-1 flex items-center gap-1 text-[9px] font-black uppercase text-zinc-400 bg-zinc-950 border border-zinc-800 px-2 py-0.5 rounded-full shadow-inner tracking-wider">
+                <Clock size={10} className="text-zinc-500" />
                 <span>{daysUntilNext13th} days left until 13th</span>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-6 border-t border-slate-100 pt-4">
-            <div className="text-center border-r border-slate-100">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Budget</p>
+          <div className="grid grid-cols-2 gap-4 mb-6 border-t border-zinc-800 pt-4">
+            <div className="text-center border-r border-zinc-800">
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Budget</p>
               <div className="flex items-center justify-center gap-1">
-                <span className="text-xl font-black text-slate-300">$</span>
+                <span className="text-xl font-black text-zinc-700">$</span>
                 <input 
                   type="text" 
                   inputMode="numeric"
-                  className="text-2xl font-black focus:outline-none w-28 bg-transparent text-center" 
+                  className="text-2xl font-black focus:outline-none w-28 bg-transparent text-center text-zinc-100" 
                   value={(monthlyBudget || 0).toFixed(2)} 
                   onChange={(e) => {
                     const val = handleAmountMaskChange(e.target.value);
@@ -312,16 +347,16 @@ export default function App() {
               </div>
             </div>
             <div className="text-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Spent</p>
-              <p className="text-2xl font-black text-slate-800">${totalSpent.toFixed(2)}</p>
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Spent</p>
+              <p className="text-2xl font-black text-zinc-200">${totalSpent.toFixed(2)}</p>
             </div>
           </div>
           
           <div className="mt-4">
-             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1">
+             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-1">
                <PieIcon size={12} /> Visual Breakdown
              </p>
-             <div className="flex h-8 w-full rounded-xl overflow-hidden bg-slate-100 shadow-inner mb-4">
+             <div className="flex h-8 w-full rounded-xl overflow-hidden bg-zinc-950 shadow-inner mb-4">
                {chartData.map(([cat, val], i) => (
                  <div 
                    key={cat} 
@@ -335,7 +370,7 @@ export default function App() {
                      }
                    }}
                  >
-                    <div className="absolute bottom-full mb-2 hidden group-hover:block bg-slate-800 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50 shadow-lg">
+                    <div className="absolute bottom-full mb-2 hidden group-hover:block bg-zinc-800 text-zinc-100 text-[10px] py-1 px-2 rounded whitespace-nowrap z-50 shadow-lg border border-zinc-700">
                       {cat}: ${Number(val).toFixed(2)}
                     </div>
                  </div>
@@ -343,14 +378,14 @@ export default function App() {
              </div>
 
              {selectedCategory && (
-               <div className="mb-4 p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between animate-fadeIn">
-                 <div className="text-[11px] font-black uppercase text-slate-600 tracking-wider flex items-center gap-2">
+               <div className="mb-4 p-3 bg-zinc-800/40 border border-zinc-800 rounded-xl flex items-center justify-between animate-fadeIn">
+                 <div className="text-[11px] font-black uppercase text-zinc-400 tracking-wider flex items-center gap-2">
                    <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
-                   Selected: <span className="text-slate-900">{selectedCategory.name}</span>
+                   Selected: <span className="text-zinc-100">{selectedCategory.name}</span>
                  </div>
                  <div className="flex items-center gap-3">
-                   <span className="text-sm font-black text-blue-600">${selectedCategory.amount.toFixed(2)}</span>
-                   <button onClick={() => setSelectedCategory(null)} className="text-slate-400 hover:text-slate-600"><X size={14}/></button>
+                   <span className="text-sm font-black text-blue-400">${selectedCategory.amount.toFixed(2)}</span>
+                   <button onClick={() => setSelectedCategory(null)} className="text-zinc-500 hover:text-zinc-300"><X size={14}/></button>
                  </div>
                </div>
              )}
@@ -362,21 +397,59 @@ export default function App() {
         <div className="grid grid-cols-3 gap-1.5 mb-8">
           {sortedCategories.map(cat => {
             const catTotal = categoryTotalsMap[cat] || 0;
+            const isStagingCategoryDelete = categoryDeletingName === cat;
+
             return (
-              <button 
-                key={cat} 
-                onClick={() => handleAddNewExpense(cat)} 
-                className="py-1 px-1 bg-white border border-slate-100 rounded-lg text-[8px] leading-tight font-black text-slate-700 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate flex flex-col items-center justify-center min-h-[44px] touch-manipulation"
-              >
-                <span className="truncate">{cat}</span>
-                {catTotal > 0 && <span className="text-slate-400 font-bold shrink-0">(${catTotal.toFixed(2)})</span>}
-              </button>
+              <div key={cat} className="relative group">
+                {isStagingCategoryDelete ? (
+                  <button 
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      setCategories(prev => prev.filter(c => c !== cat));
+                      setCategoryDeletingName(null);
+                    }}
+                    className="w-full bg-red-600 text-white border border-red-500 rounded-lg text-[8px] font-black tracking-wider uppercase flex items-center justify-center min-h-[44px] animate-fadeIn touch-manipulation"
+                  >
+                    CONFIRM?
+                  </button>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => handleAddNewExpense(cat)} 
+                      className="w-full py-1 px-1 bg-zinc-900 border border-zinc-800/60 rounded-lg text-[8px] leading-tight font-black text-zinc-300 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate flex flex-col items-center justify-center min-h-[44px] touch-manipulation"
+                    >
+                      <span className="truncate pr-2">{cat}</span>
+                      {catTotal > 0 && <span className="text-zinc-500 font-bold shrink-0">(${catTotal.toFixed(2)})</span>}
+                    </button>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        setCategoryDeletingName(cat);
+                      }}
+                      className="absolute top-0.5 right-0.5 text-zinc-600 hover:text-red-400 active:text-red-500 p-0.5 rounded transition-colors touch-manipulation"
+                      title={`Delete ${cat}`}
+                    >
+                      <X size={8} className="stroke-[3]" />
+                    </button>
+                  </>
+                )}
+              </div>
             );
           })}
+          
+          <button 
+            onClick={() => setIsModalOpen(true)} 
+            className="py-1 px-1 bg-zinc-900 border border-zinc-800 rounded-lg text-[9px] leading-tight font-black text-blue-400 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase flex flex-col items-center justify-center min-h-[44px] touch-manipulation gap-0.5"
+          >
+            <Plus size={12} className="stroke-[3]" />
+            <span>Add New</span>
+          </button>
         </div>
 
         <div className="space-y-3">
-          <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><ReceiptText size={12}/> History</h2>
+          <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1 flex items-center gap-2"><ReceiptText size={12}/> History</h2>
           {expenses.map(exp => {
             const isSelected = selectedExpenseIds.includes(exp.id);
             const isStagingDelete = deletingId === exp.id;
@@ -386,20 +459,20 @@ export default function App() {
                 key={exp.id} 
                 className={`p-4 rounded-2xl border transition-all duration-150 flex items-center gap-3.5 shadow-sm select-none ${
                   isSelected 
-                    ? 'bg-blue-5/70 border-blue-200 ring-2 ring-blue-500/10' 
-                    : 'bg-white border-slate-100 hover:border-slate-200'
+                    ? 'bg-blue-950/40 border-blue-800 ring-2 ring-blue-500/20' 
+                    : 'bg-zinc-900 border-zinc-800/80 hover:border-zinc-700'
                 }`}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between mb-1">
-                    <input className="font-black text-slate-800 bg-transparent focus:outline-none w-full" value={exp.category} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { category: e.target.value })} />
-                    <div className="flex items-center text-blue-600 font-black">
+                    <input className="font-black text-zinc-100 bg-transparent focus:outline-none w-full" value={exp.category} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { category: e.target.value })} />
+                    <div className="flex items-center text-blue-400 font-black">
                       <span className="text-sm mr-0.5">$</span>
                       <input 
                         type="text" 
                         inputMode="numeric"
                         ref={el => { amountInputsRef.current[exp.id] = el; }}
-                        className="w-20 text-right bg-transparent focus:outline-none" 
+                        className="w-20 text-right bg-transparent focus:outline-none text-zinc-100" 
                         value={(exp.amount || 0).toFixed(2)} 
                         onChange={(e) => {
                           const val = handleAmountMaskChange(e.target.value);
@@ -408,10 +481,10 @@ export default function App() {
                       />
                     </div>
                   </div>
-                  <div className="flex justify-between text-slate-400 items-center min-h-[24px]">
+                  <div className="flex justify-between text-zinc-500 items-center min-h-[24px]">
                     <div className="flex items-center gap-1">
                       <Calendar size={12} />
-                      <input type="date" className="text-[10px] bg-transparent focus:outline-none font-bold uppercase" value={exp.date} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { date: e.target.value })} />
+                      <input type="date" className="text-[10px] bg-transparent focus:outline-none font-bold uppercase text-zinc-400" value={exp.date} onChange={(e) => updateDoc(doc(db, 'expenses', exp.id), { date: e.target.value })} />
                     </div>
                     
                     <div className="flex items-center gap-2 pointer-events-auto shrink-0">
@@ -421,7 +494,7 @@ export default function App() {
                         className={`w-6 h-6 rounded-lg border transition-all flex items-center justify-center touch-manipulation ${
                           isSelected 
                             ? 'bg-blue-500 border-blue-500 text-white shadow-sm' 
-                            : 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
                         }`}
                       >
                         {isSelected ? <Check size={12} className="stroke-[3]" /> : <Plus size={12} className="stroke-[3]" />}
@@ -447,7 +520,7 @@ export default function App() {
                               e.stopPropagation(); 
                               setDeletingId(exp.id);
                             }} 
-                            className="text-slate-200 hover:text-red-400 p-1 rounded transition-colors touch-manipulation"
+                            className="text-zinc-700 hover:text-red-400 p-1 rounded transition-colors touch-manipulation"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -464,25 +537,70 @@ export default function App() {
         <div className="mt-12 mb-8 space-y-3">
           <button 
             onClick={handleClearAll} 
-            className="w-full py-4 bg-red-50 text-red-600 rounded-2xl border border-red-100 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all shadow-sm touch-manipulation"
+            className="w-full py-4 bg-red-950/20 text-red-400 rounded-2xl border border-red-900/50 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-900/40 transition-all shadow-sm touch-manipulation"
           >
             <Eraser size={14}/> Clear All Transactions
           </button>
           
           <button 
-            onClick={handleExportCSV} 
-            className="w-full py-4 bg-slate-100 text-slate-700 rounded-2xl border border-slate-200 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 transition-all shadow-sm touch-manipulation"
+            onClick={handleCopyToClipboard} 
+            className="w-full py-4 bg-zinc-900 text-zinc-300 rounded-2xl border border-zinc-800 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all shadow-sm touch-manipulation"
           >
-            <Download size={14}/> Export to CSV
+            <ClipboardCopy size={14}/> Copy to Spreadsheet
           </button>
         </div>
       </main>
 
+      {/* Dynamic Category Overlay Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                <Plus size={14} className="text-blue-400" /> Add Custom Category
+              </h3>
+              <button 
+                onClick={() => { setIsModalOpen(false); setNewCategoryInput(""); }}
+                className="text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddCategorySubmit} className="space-y-4">
+              <input 
+                type="text"
+                autoFocus
+                placeholder="e.g., Taco Bell, Home Depot..."
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-100 font-bold focus:outline-none focus:border-blue-500 transition-colors placeholder:text-zinc-600"
+                value={newCategoryInput}
+                onChange={(e) => setNewCategoryInput(e.target.value)}
+              />
+              <div className="flex gap-3 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => { setIsModalOpen(false); setNewCategoryInput(""); }}
+                  className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors"
+                >
+                  Add Button
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {selectedExpenseIds.length > 0 && (
         <div className="fixed bottom-6 left-0 right-0 px-4 z-50 pointer-events-none flex justify-center animate-slideUp">
-          <div className="pointer-events-auto bg-slate-900/95 backdrop-blur text-white py-3.5 px-6 rounded-2xl shadow-2xl border border-slate-800 flex items-center justify-between gap-6 max-w-sm w-full">
+          <div className="pointer-events-auto bg-zinc-900/95 backdrop-blur text-white py-3.5 px-6 rounded-2xl shadow-2xl border border-zinc-800 flex items-center justify-between gap-6 max-w-sm w-full">
             <div className="flex flex-col">
-              <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
+              <span className="text-[9px] font-black uppercase text-zinc-500 tracking-wider">
                 Selected ({selectedExpenseIds.length})
               </span>
               <span className="text-xl font-black text-emerald-400">
@@ -491,7 +609,7 @@ export default function App() {
             </div>
             <button 
               onClick={() => setSelectedExpenseIds([])} 
-              className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white transition-colors touch-manipulation"
+              className="p-2 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white transition-colors touch-manipulation"
               title="Clear selection"
             >
               <X size={16} className="stroke-[2.5]" />
