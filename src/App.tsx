@@ -183,7 +183,6 @@ export default function App() {
   };
 
   const handleClearAll = async () => {
-    // Keep internal logic without prompt since native alerts are blocked
     const batch = writeBatch(db);
     expenses.forEach(exp => batch.delete(doc(db, 'expenses', exp.id)));
     await batch.commit();
@@ -394,7 +393,8 @@ export default function App() {
       </div>
 
       <main className="max-w-xl mx-auto px-4 mt-8">
-        <div className="grid grid-cols-3 gap-1.5 mb-8">
+        {/* Adjusted grid to 2 columns with slightly larger gap for readability */}
+        <div className="grid grid-cols-2 gap-2 mb-8">
           {sortedCategories.map(cat => {
             const catTotal = categoryTotalsMap[cat] || 0;
             const isStagingCategoryDelete = categoryDeletingName === cat;
@@ -409,7 +409,7 @@ export default function App() {
                       setCategories(prev => prev.filter(c => c !== cat));
                       setCategoryDeletingName(null);
                     }}
-                    className="w-full bg-red-600 text-white border border-red-500 rounded-lg text-[8px] font-black tracking-wider uppercase flex items-center justify-center min-h-[44px] animate-fadeIn touch-manipulation"
+                    className="w-full bg-red-600 text-white border border-red-500 rounded-lg text-[11px] font-black tracking-wider uppercase flex items-center justify-center min-h-[46px] animate-fadeIn touch-manipulation"
                   >
                     CONFIRM?
                   </button>
@@ -417,10 +417,10 @@ export default function App() {
                   <>
                     <button 
                       onClick={() => handleAddNewExpense(cat)} 
-                      className="w-full py-1 px-1 bg-zinc-900 border border-zinc-800/60 rounded-lg text-[8px] leading-tight font-black text-zinc-300 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate flex flex-col items-center justify-center min-h-[44px] touch-manipulation"
+                      className="w-full py-1.5 px-2 bg-zinc-900 border border-zinc-800/60 rounded-lg text-[11px] leading-tight font-black text-zinc-300 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase truncate flex flex-col items-center justify-center min-h-[46px] touch-manipulation"
                     >
-                      <span className="truncate pr-2">{cat}</span>
-                      {catTotal > 0 && <span className="text-zinc-500 font-bold shrink-0">(${catTotal.toFixed(2)})</span>}
+                      <span className="truncate pr-4">{cat}</span>
+                      {catTotal > 0 && <span className="text-zinc-500 font-bold shrink-0 mt-0.5">(${catTotal.toFixed(2)})</span>}
                     </button>
                     <button
                       type="button"
@@ -428,10 +428,10 @@ export default function App() {
                         e.stopPropagation();
                         setCategoryDeletingName(cat);
                       }}
-                      className="absolute top-0.5 right-0.5 text-zinc-600 hover:text-red-400 active:text-red-500 p-0.5 rounded transition-colors touch-manipulation"
+                      className="absolute top-1 right-1 text-zinc-600 hover:text-red-400 active:text-red-500 p-1 rounded transition-colors touch-manipulation"
                       title={`Delete ${cat}`}
                     >
-                      <X size={8} className="stroke-[3]" />
+                      <X size={10} className="stroke-[3]" />
                     </button>
                   </>
                 )}
@@ -441,7 +441,7 @@ export default function App() {
           
           <button 
             onClick={() => setIsModalOpen(true)} 
-            className="py-1 px-1 bg-zinc-900 border border-zinc-800 rounded-lg text-[9px] leading-tight font-black text-blue-400 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase flex flex-col items-center justify-center min-h-[44px] touch-manipulation gap-0.5"
+            className="py-1.5 px-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[11px] leading-tight font-black text-blue-400 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase flex flex-col items-center justify-center min-h-[46px] touch-manipulation gap-0.5"
           >
             <Plus size={12} className="stroke-[3]" />
             <span>Add New</span>
