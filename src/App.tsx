@@ -490,15 +490,6 @@ export default function App() {
             );
           })}
 
-          {/* Add New button */}
-          <button
-            ref={addCategoryBtnRef}
-            onPointerDown={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
-            className="py-1.5 px-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[11px] leading-tight font-black text-blue-400 shadow-sm active:bg-blue-600 active:text-white transition-all uppercase flex flex-col items-center justify-center min-h-[54px] touch-manipulation gap-0.5"
-          >
-            <Plus size={12} className="stroke-[3]" />
-            <span>Add New</span>
-          </button>
         </div>
 
         {/* ── Transaction history ── */}
@@ -737,6 +728,35 @@ export default function App() {
         </div>
       )}
 
+
+      {/* ── Add Category FAB ── */}
+      <button
+        ref={addCategoryBtnRef}
+        onPointerDown={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'false'; }}
+        onPointerCancel={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'true'; }}
+        onPointerMove={(e) => {
+          const btn = e.currentTarget as HTMLButtonElement;
+          if (!btn.dataset.startX) {
+            btn.dataset.startX = String(e.clientX);
+            btn.dataset.startY = String(e.clientY);
+          }
+          const dx = e.clientX - Number(btn.dataset.startX);
+          const dy = e.clientY - Number(btn.dataset.startY);
+          if (Math.sqrt(dx * dx + dy * dy) > 8) btn.dataset.cancelled = 'true';
+        }}
+        onPointerUp={(e) => {
+          const btn = e.currentTarget as HTMLButtonElement;
+          btn.dataset.startX = '';
+          btn.dataset.startY = '';
+          if (btn.dataset.cancelled === 'true') return;
+          e.stopPropagation();
+          setIsModalOpen(true);
+        }}
+        className="fixed bottom-24 right-5 z-40 w-14 h-14 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-all touch-manipulation"
+        aria-label="Add new category"
+      >
+        <Plus size={24} className="stroke-[2.5]" />
+      </button>
 
       {/* ── Selection total bar ── */}
       {selectedExpenseIds.length > 0 && (
