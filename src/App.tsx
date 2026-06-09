@@ -187,12 +187,7 @@ export default function App() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setNewCategoryInput("");
-    setTimeout(() => {
-      if (addCategoryBtnRef.current) {
-        addCategoryBtnRef.current.focus();
-        addCategoryBtnRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 80);
+    setTimeout(() => { if (addCategoryBtnRef.current) addCategoryBtnRef.current.focus(); }, 80);
   };
 
   const handleAddCategorySubmit = async (e: React.FormEvent) => {
@@ -209,12 +204,7 @@ export default function App() {
 
     setIsModalOpen(false);
     setNewCategoryInput("");
-    setTimeout(() => {
-      if (addCategoryBtnRef.current) {
-        addCategoryBtnRef.current.focus();
-        addCategoryBtnRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 80);
+    setTimeout(() => { if (addCategoryBtnRef.current) addCategoryBtnRef.current.focus(); }, 80);
   };
 
   const handleClearAll = async () => {
@@ -440,7 +430,12 @@ export default function App() {
                 {isStagingCategoryDelete ? (
                   <button
                     type="button"
-                    onPointerDown={async (e) => {
+                    onPointerDown={(e) => { e.stopPropagation(); (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'false'; (e.currentTarget as HTMLButtonElement).dataset.startX = String(e.clientX); (e.currentTarget as HTMLButtonElement).dataset.startY = String(e.clientY); }}
+                    onPointerCancel={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'true'; }}
+                    onPointerMove={(e) => { const b = e.currentTarget as HTMLButtonElement; const dx = e.clientX - Number(b.dataset.startX); const dy = e.clientY - Number(b.dataset.startY); if (Math.sqrt(dx*dx+dy*dy) > 8) b.dataset.cancelled = 'true'; }}
+                    onPointerUp={async (e) => {
+                      const b = e.currentTarget as HTMLButtonElement;
+                      if (b.dataset.cancelled === 'true') return;
                       e.stopPropagation();
                       const inUse = expenses.some(e => e.category === cat);
                       if (inUse) { showToast('Cannot delete category with transactions'); return; }
@@ -456,8 +451,9 @@ export default function App() {
                 ) : (
                   <div className="w-full bg-zinc-900 border border-zinc-800/60 rounded-lg shadow-sm flex flex-col min-h-[54px] overflow-hidden">
                     <button
-                      onPointerDown={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'false'; }}
+                      onPointerDown={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'false'; (e.currentTarget as HTMLButtonElement).dataset.startX = String(e.clientX); (e.currentTarget as HTMLButtonElement).dataset.startY = String(e.clientY); }}
                       onPointerCancel={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'true'; }}
+                      onPointerMove={(e) => { const b = e.currentTarget as HTMLButtonElement; const dx = e.clientX - Number(b.dataset.startX); const dy = e.clientY - Number(b.dataset.startY); if (Math.sqrt(dx*dx+dy*dy) > 8) b.dataset.cancelled = 'true'; }}
                       onPointerUp={(e) => {
                         if ((e.currentTarget as HTMLButtonElement).dataset.cancelled === 'true') return;
                         setQuickAddCategory(cat); setQuickAddAmount("");
@@ -473,10 +469,10 @@ export default function App() {
                       <div className="border-t border-zinc-800/60 flex justify-end px-2 py-0.5">
                         <button
                           type="button"
-                          onPointerDown={(e) => {
-                            e.stopPropagation();
-                            setCategoryDeletingName(cat);
-                          }}
+                          onPointerDown={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'false'; (e.currentTarget as HTMLButtonElement).dataset.startX = String(e.clientX); (e.currentTarget as HTMLButtonElement).dataset.startY = String(e.clientY); }}
+                          onPointerCancel={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'true'; }}
+                          onPointerMove={(e) => { const b = e.currentTarget as HTMLButtonElement; const dx = e.clientX - Number(b.dataset.startX); const dy = e.clientY - Number(b.dataset.startY); if (Math.sqrt(dx*dx+dy*dy) > 8) b.dataset.cancelled = 'true'; }}
+                          onPointerUp={(e) => { const b = e.currentTarget as HTMLButtonElement; if (b.dataset.cancelled === 'true') return; e.stopPropagation(); setCategoryDeletingName(cat); }}
                           className="text-zinc-600 active:text-red-400 p-1 rounded transition-colors touch-manipulation"
                           title={`Delete ${cat}`}
                         >
@@ -568,11 +564,10 @@ export default function App() {
                         {isStagingDelete ? (
                           <button
                             type="button"
-                            onPointerDown={(e) => {
-                              e.stopPropagation();
-                              deleteDoc(doc(db, 'expenses', exp.id));
-                              setDeletingId(null);
-                            }}
+                            onPointerDown={(e) => { e.stopPropagation(); (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'false'; (e.currentTarget as HTMLButtonElement).dataset.startX = String(e.clientX); (e.currentTarget as HTMLButtonElement).dataset.startY = String(e.clientY); }}
+                            onPointerCancel={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'true'; }}
+                            onPointerMove={(e) => { const b = e.currentTarget as HTMLButtonElement; const dx = e.clientX - Number(b.dataset.startX); const dy = e.clientY - Number(b.dataset.startY); if (Math.sqrt(dx*dx+dy*dy) > 8) b.dataset.cancelled = 'true'; }}
+                            onPointerUp={(e) => { const b = e.currentTarget as HTMLButtonElement; if (b.dataset.cancelled === 'true') return; deleteDoc(doc(db, 'expenses', exp.id)); setDeletingId(null); }}
                             className="bg-red-500 text-white text-[9px] font-black tracking-wider uppercase px-2.5 py-1 rounded-lg shadow-sm hover:bg-red-600 animate-fadeIn shrink-0 touch-manipulation"
                           >
                             CONFIRM?
@@ -580,10 +575,10 @@ export default function App() {
                         ) : (
                           <button
                             type="button"
-                            onPointerDown={(e) => {
-                              e.stopPropagation();
-                              setDeletingId(exp.id);
-                            }}
+                            onPointerDown={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'false'; (e.currentTarget as HTMLButtonElement).dataset.startX = String(e.clientX); (e.currentTarget as HTMLButtonElement).dataset.startY = String(e.clientY); }}
+                            onPointerCancel={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'true'; }}
+                            onPointerMove={(e) => { const b = e.currentTarget as HTMLButtonElement; const dx = e.clientX - Number(b.dataset.startX); const dy = e.clientY - Number(b.dataset.startY); if (Math.sqrt(dx*dx+dy*dy) > 8) b.dataset.cancelled = 'true'; }}
+                            onPointerUp={(e) => { const b = e.currentTarget as HTMLButtonElement; if (b.dataset.cancelled === 'true') return; e.stopPropagation(); setDeletingId(exp.id); }}
                             className="text-zinc-700 active:text-red-400 p-1 rounded transition-colors touch-manipulation"
                           >
                             <Trash2 size={16} />
@@ -626,7 +621,10 @@ export default function App() {
         {/* ── Bottom actions ── */}
         <div className="mt-12 mb-8 space-y-3">
           <button
-            onPointerDown={(e) => { e.stopPropagation(); handleClearAll(); }}
+            onPointerDown={(e) => { e.stopPropagation(); (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'false'; (e.currentTarget as HTMLButtonElement).dataset.startX = String(e.clientX); (e.currentTarget as HTMLButtonElement).dataset.startY = String(e.clientY); }}
+            onPointerCancel={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'true'; }}
+            onPointerMove={(e) => { const b = e.currentTarget as HTMLButtonElement; const dx = e.clientX - Number(b.dataset.startX); const dy = e.clientY - Number(b.dataset.startY); if (Math.sqrt(dx*dx+dy*dy) > 8) b.dataset.cancelled = 'true'; }}
+            onPointerUp={(e) => { const b = e.currentTarget as HTMLButtonElement; if (b.dataset.cancelled === 'true') return; handleClearAll(); }}
             className={`w-full py-4 rounded-2xl border font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm touch-manipulation ${
               clearAllStaging
                 ? 'bg-red-600 text-white border-red-500'
@@ -701,22 +699,36 @@ export default function App() {
               inputMode="numeric"
               value={handleAmountMaskChange(quickAddAmount).toFixed(2)}
               onChange={(e)=>setQuickAddAmount(e.target.value)}
-              className="w-full p-3 rounded bg-zinc-800"
+              className="w-full p-3 rounded bg-zinc-800 touch-manipulation"
               placeholder="0.00"
             />
             <div className="flex gap-2 mt-4">
-              <button className="flex-1 bg-zinc-700 p-3 rounded" onClick={()=>setQuickAddCategory(null)}>Cancel</button>
-              <button className="flex-1 bg-blue-600 p-3 rounded font-black" onClick={async () => {
-                setCurrentPage(1);
-                await addDoc(collection(db, 'expenses'), {
-                  category: quickAddCategory,
-                  amount: handleAmountMaskChange(quickAddAmount),
-                  date: new Date().toISOString().split('T')[0],
-                  createdAt: serverTimestamp()
-                });
-                showToast('Expense added');
-                setQuickAddCategory(null);
-              }}>Add</button>
+              <button
+                className="flex-1 bg-zinc-700 p-3 rounded touch-manipulation"
+                onPointerDown={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'false'; (e.currentTarget as HTMLButtonElement).dataset.startX = String(e.clientX); (e.currentTarget as HTMLButtonElement).dataset.startY = String(e.clientY); }}
+                onPointerCancel={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'true'; }}
+                onPointerMove={(e) => { const b = e.currentTarget as HTMLButtonElement; const dx = e.clientX - Number(b.dataset.startX); const dy = e.clientY - Number(b.dataset.startY); if (Math.sqrt(dx*dx+dy*dy) > 8) b.dataset.cancelled = 'true'; }}
+                onPointerUp={(e) => { const b = e.currentTarget as HTMLButtonElement; if (b.dataset.cancelled === 'true') return; setQuickAddCategory(null); }}
+              >Cancel</button>
+              <button
+                className="flex-1 bg-blue-600 p-3 rounded font-black touch-manipulation"
+                onPointerDown={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'false'; (e.currentTarget as HTMLButtonElement).dataset.startX = String(e.clientX); (e.currentTarget as HTMLButtonElement).dataset.startY = String(e.clientY); }}
+                onPointerCancel={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'true'; }}
+                onPointerMove={(e) => { const b = e.currentTarget as HTMLButtonElement; const dx = e.clientX - Number(b.dataset.startX); const dy = e.clientY - Number(b.dataset.startY); if (Math.sqrt(dx*dx+dy*dy) > 8) b.dataset.cancelled = 'true'; }}
+                onPointerUp={async (e) => {
+                  const b = e.currentTarget as HTMLButtonElement;
+                  if (b.dataset.cancelled === 'true') return;
+                  setCurrentPage(1);
+                  await addDoc(collection(db, 'expenses'), {
+                    category: quickAddCategory,
+                    amount: handleAmountMaskChange(quickAddAmount),
+                    date: new Date().toISOString().split('T')[0],
+                    createdAt: serverTimestamp()
+                  });
+                  showToast('Expense added');
+                  setQuickAddCategory(null);
+                }}
+              >Add</button>
             </div>
           </div>
         </div>
@@ -732,7 +744,7 @@ export default function App() {
       {/* ── Add Category FAB ── */}
       <button
         ref={addCategoryBtnRef}
-        onPointerDown={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'false'; }}
+        onPointerDown={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'false'; (e.currentTarget as HTMLButtonElement).dataset.startX = String(e.clientX); (e.currentTarget as HTMLButtonElement).dataset.startY = String(e.clientY); }}
         onPointerCancel={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'true'; }}
         onPointerMove={(e) => {
           const btn = e.currentTarget as HTMLButtonElement;
