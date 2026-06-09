@@ -456,7 +456,11 @@ export default function App() {
                 ) : (
                   <div className="w-full bg-zinc-900 border border-zinc-800/60 rounded-lg shadow-sm flex flex-col min-h-[54px] overflow-hidden">
                     <button
-                      onClick={() => { setQuickAddCategory(cat); setQuickAddAmount(""); }}
+                      onPointerDown={(e) => { (e.currentTarget as HTMLButtonElement).dataset.startY = String(e.clientY); }}
+                      onPointerUp={(e) => {
+                        const startY = parseFloat((e.currentTarget as HTMLButtonElement).dataset.startY || '0');
+                        if (Math.abs(e.clientY - startY) < 8) { setQuickAddCategory(cat); setQuickAddAmount(""); }
+                      }}
                       className="flex-1 py-1.5 px-3 text-[11px] leading-tight font-black text-zinc-300 active:bg-blue-600 active:text-white transition-all uppercase truncate flex flex-col items-center justify-center touch-manipulation"
                     >
                       <span className="truncate w-full text-center">{cat}</span>
@@ -710,9 +714,9 @@ export default function App() {
             />
             <div className="flex gap-2 mt-4">
               <button className="flex-1 bg-zinc-700 p-3 rounded" onClick={()=>setQuickAddCategory(null)}>Cancel</button>
-              <button className="flex-1 bg-blue-600 p-3 rounded" onClick={async()=>{
+              <button className="flex-1 bg-blue-600 p-3 rounded font-black" onClick={async () => {
                 setCurrentPage(1);
-                await addDoc(collection(db,'expenses'),{
+                await addDoc(collection(db, 'expenses'), {
                   category: quickAddCategory,
                   amount: handleAmountMaskChange(quickAddAmount),
                   date: new Date().toISOString().split('T')[0],
