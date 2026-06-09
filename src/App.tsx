@@ -456,10 +456,11 @@ export default function App() {
                 ) : (
                   <div className="w-full bg-zinc-900 border border-zinc-800/60 rounded-lg shadow-sm flex flex-col min-h-[54px] overflow-hidden">
                     <button
-                      onPointerDown={(e) => { (e.currentTarget as HTMLButtonElement).dataset.startY = String(e.clientY); }}
+                      onPointerDown={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'false'; }}
+                      onPointerCancel={(e) => { (e.currentTarget as HTMLButtonElement).dataset.cancelled = 'true'; }}
                       onPointerUp={(e) => {
-                        const startY = parseFloat((e.currentTarget as HTMLButtonElement).dataset.startY || '0');
-                        if (Math.abs(e.clientY - startY) < 8) { setQuickAddCategory(cat); setQuickAddAmount(""); }
+                        if ((e.currentTarget as HTMLButtonElement).dataset.cancelled === 'true') return;
+                        setQuickAddCategory(cat); setQuickAddAmount("");
                       }}
                       className="flex-1 py-1.5 px-3 text-[11px] leading-tight font-black text-zinc-300 active:bg-blue-600 active:text-white transition-all uppercase truncate flex flex-col items-center justify-center touch-manipulation"
                     >
