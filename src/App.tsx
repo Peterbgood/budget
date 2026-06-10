@@ -37,11 +37,7 @@ const auth = getAuth(app);
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const DEFAULT_CATEGORIES: string[] = [];
-
 const ITEMS_PER_PAGE = 25;
-
-// NOTE: Move to an env variable (e.g. VITE_APP_PIN) for any non-personal deployment.
-const APP_PIN = "3270";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -65,8 +61,6 @@ export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [pinInput, setPinInput] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<{ name: string; amount: number } | null>(null);
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -90,37 +84,9 @@ export default function App() {
     signInAnonymously(auth).catch(console.error);
   }, []);
 
-  // ── PIN screen keyboard listener ────────────────────────────────────────────
-
-  useEffect(() => {
-    if (isAuthenticated) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key >= '0' && e.key <= '9') {
-        if (pinInput.length < 4) setPinInput(prev => prev + e.key);
-      } else if (e.key === 'Backspace') {
-        setPinInput(prev => prev.slice(0, -1));
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pinInput, isAuthenticated]);
-
-  useEffect(() => {
-    if (pinInput.length === 4) {
-      if (pinInput === APP_PIN) {
-        setIsAuthenticated(true);
-      } else {
-        const timer = setTimeout(() => setPinInput(''), 400);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [pinInput]);
-
   // ── Firestore subscriptions ─────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!isAuthenticated) return;
-
     const unsubBudget = onSnapshot(doc(db, 'budgets', 'main_config'), (snap) => {
       if (snap.exists()) setMonthlyBudget(snap.data().monthlyBudget || 0);
     });
@@ -155,7 +121,7 @@ export default function App() {
     });
 
     return () => { unsubBudget(); unsubCategories(); unsubExpenses(); };
-  }, [isAuthenticated]);
+  }, []);
 
   // ── Global click resets staging states ─────────────────────────────────────
 
@@ -254,7 +220,6 @@ export default function App() {
 
   const totalPages = Math.max(1, Math.ceil(expenses.length / ITEMS_PER_PAGE));
   
-  // Guard current page index dynamically if items get wiped or deleted out from beneath us
   useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
@@ -297,50 +262,13 @@ export default function App() {
     expenses.filter(e => selectedExpenseIds.includes(e.id)).reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
   ), [selectedExpenseIds, expenses]);
 
-  // ── PIN screen ──────────────────────────────────────────────────────────────
-
-  if (!isAuthenticated) {
-    return (
-      <div className="h-screen bg-black flex flex-col items-center justify-center p-6 text-white">
-        <div className="w-full max-w-[300px] flex flex-col items-center">
-          <p className="text-2xl font-bold mb-8">Enter PIN</p>
-          <div className="flex gap-4 mb-10">
-            {[0, 1, 2, 3].map(i => (
-              <div key={i} className={`w-3 h-3 rounded-full transition-all duration-200 ${pinInput.length > i ? 'bg-white' : 'bg-white/20'}`} />
-            ))}
-          </div>
-          <div className="grid grid-cols-3 gap-4 select-none w-full">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-              <button
-                key={n}
-                onClick={() => pinInput.length < 4 && setPinInput(prev => prev + n)}
-                className="h-20 rounded-2xl bg-[#1c1c1e] text-2xl font-medium active:bg-[#3a3a3c] transition-all touch-manipulation"
-              >
-                {n}
-              </button>
-            ))}
-            <button onClick={() => setPinInput("")} className="h-20 rounded-2xl bg-[#1c1c1e] text-xl font-medium active:bg-[#3a3a3c] transition-all touch-manipulation">C</button>
-            <button onClick={() => pinInput.length < 4 && setPinInput(prev => prev + "0")} className="h-20 rounded-2xl bg-[#1c1c1e] text-2xl font-medium active:bg-[#3a3a3c] transition-all touch-manipulation">0</button>
-            <button onClick={() => setPinInput(prev => prev.slice(0, -1))} className="h-20 rounded-2xl bg-[#1c1c1e] flex items-center justify-center active:bg-[#3a3a3c] transition-all touch-manipulation">
-              <svg width="28" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff453a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
-                <line x1="18" y1="9" x2="12" y2="15" />
-                <line x1="12" y1="9" x2="18" y2="15" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // ── Main UI ─────────────────────────────────────────────────────────────────
 
   if (loading) return (
     <div className="h-screen bg-zinc-950 flex items-center justify-center font-black text-zinc-700 uppercase tracking-widest">
       Syncing...
     </div>
   );
-
-  // ── Main UI ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 pb-32">
