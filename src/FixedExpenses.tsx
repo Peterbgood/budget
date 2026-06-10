@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
-  getFirestore, collection, onSnapshot, query, orderBy,
-  addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch,
+  getFirestore, collection, onSnapshot, query,
+  addDoc, updateDoc, deleteDoc, doc, writeBatch,
   Timestamp
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { Trash2, Plus, Check, Pencil, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Trash2, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,7 +71,6 @@ export default function FixedExpenses() {
     const qIncome = query(collection(db, 'income'));
     const unsubIncome = onSnapshot(qIncome, (snap) => {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as FixedItem[];
-      // Sort primarily by order field, secondary by description/createdAt
       const sorted = data.sort((a, b) => {
         if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
         if (a.order !== undefined) return -1;
@@ -115,7 +114,6 @@ export default function FixedExpenses() {
 
     const batch = writeBatch(db);
 
-    // Rewrite sequence explicitly to establish deterministic 'order' parameters across old/new documents
     list.forEach((item, idx) => {
       let finalOrder = idx;
       if (idx === index) finalOrder = targetIndex;
