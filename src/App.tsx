@@ -292,7 +292,7 @@ export default function App() {
 
       {/* ── Summary card ── */}
       <div className="px-4 pt-6 mb-6">
-        <div className="max-w-xl mx-auto bg-zinc-900 rounded-3xl shadow-xl p-6 border border-zinc-800/80">
+        <div className="max-w-xl md:max-w-3xl mx-auto bg-zinc-900 rounded-3xl shadow-xl p-6 border border-zinc-800/80">
           <div className="text-center mb-6 relative">
             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Remaining</p>
             <p className={`text-4xl font-black ${remaining < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
@@ -362,10 +362,10 @@ export default function App() {
         </div>
       </div>
 
-      <main className="max-w-xl mx-auto px-4 mt-8">
+      <main className="max-w-xl md:max-w-3xl mx-auto px-4 mt-8">
 
         {/* ── Category buttons ── */}
-        <div className="grid grid-cols-2 gap-2 mb-8">
+        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-8">
           {sortedCategories.map(cat => {
             const catTotal = categoryTotalsMap[cat] || 0;
             const isStagingCategoryDelete = categoryDeletingName === cat;
@@ -403,9 +403,9 @@ export default function App() {
                         if ((e.currentTarget as HTMLButtonElement).dataset.cancelled === 'true') return;
                         setQuickAddCategory(cat); setQuickAddAmount("");
                       }}
-                      className="flex-1 py-1.5 px-3 text-[11px] leading-tight font-black text-zinc-300 active:bg-blue-600 active:text-white transition-all uppercase truncate flex flex-col items-center justify-center touch-manipulation"
+                      className="flex-1 py-1.5 px-2 text-[11px] leading-tight font-black text-zinc-300 active:bg-blue-600 active:text-white transition-all uppercase flex flex-col items-center justify-center touch-manipulation"
                     >
-                      <span className="truncate w-full text-center">{cat}</span>
+                      <span className="w-full text-center break-words whitespace-normal">{cat}</span>
                       {catTotal > 0 && (
                         <span className="text-blue-400 font-black shrink-0 mt-0.5">(${catTotal.toFixed(2)})</span>
                       )}
