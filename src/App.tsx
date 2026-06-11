@@ -700,7 +700,7 @@ export default function App() {
 
       {/* ── Selection total bar ── */}
       {selectedExpenseIds.length > 0 && (
-        <div className="fixed bottom-6 left-0 right-0 px-4 z-50 pointer-events-none flex justify-center animate-slideUp">
+        <div className="fixed bottom-20 left-0 right-0 px-4 z-50 pointer-events-none flex justify-center animate-slideUp">
           <div className="pointer-events-auto bg-zinc-900/95 backdrop-blur text-white py-3.5 px-6 rounded-2xl shadow-2xl border border-zinc-800 flex items-center justify-between gap-6 max-w-sm w-full">
             <div className="flex flex-col">
               <span className="text-[9px] font-black uppercase text-zinc-500 tracking-wider">
