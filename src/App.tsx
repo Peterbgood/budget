@@ -6,7 +6,7 @@ import {
   Timestamp, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { Trash2, Calendar, ReceiptText, PieChart as PieIcon, X, Eraser, ClipboardCopy, Plus, Check, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, Calendar, ReceiptText, PieChart as PieIcon, X, Eraser, ClipboardCopy, Plus, Check, Clock, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -77,6 +77,11 @@ export default function App() {
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Search State
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   // ── Auth ────────────────────────────────────────────────────────────────────
 
@@ -218,7 +223,19 @@ export default function App() {
   const totalSpent = useMemo(() => expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0), [expenses]);
   const remaining = monthlyBudget - totalSpent;
 
-  const totalPages = Math.max(1, Math.ceil(expenses.length / ITEMS_PER_PAGE));
+  // ── Search filtering ────────────────────────────────────────────────────────
+
+  const filteredExpenses = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return expenses;
+    return expenses.filter(e => {
+      const nameMatch = e.category.toLowerCase().includes(q);
+      const amountMatch = e.amount.toFixed(2).includes(q) || String(e.amount).includes(q);
+      return nameMatch || amountMatch;
+    });
+  }, [expenses, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredExpenses.length / ITEMS_PER_PAGE));
   
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -228,8 +245,8 @@ export default function App() {
 
   const paginatedExpenses = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return expenses.slice(start, start + ITEMS_PER_PAGE);
-  }, [expenses, currentPage]);
+    return filteredExpenses.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredExpenses, currentPage]);
 
   const daysUntilNext13th = useMemo(() => {
     const today = new Date();
@@ -420,12 +437,59 @@ export default function App() {
         <div className="space-y-3">
           <div className="flex items-center justify-between ml-1">
             <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-              <ReceiptText size={12} /> History 
+              <ReceiptText size={12} /> History
               <span className="text-zinc-600 font-normal normal-case ml-0.5">
-                ({expenses.length} total)
+                ({searchQuery.trim() ? `${filteredExpenses.length} of ${expenses.length}` : `${expenses.length} total`})
               </span>
             </h2>
+            <button
+              onClick={() => {
+                setSearchOpen(prev => {
+                  const next = !prev;
+                  if (!next) { setSearchQuery(""); setCurrentPage(1); }
+                  else setTimeout(() => searchInputRef.current?.focus(), 80);
+                  return next;
+                });
+              }}
+              className={`p-1.5 rounded-lg transition-all touch-manipulation ${
+                searchOpen || searchQuery
+                  ? 'bg-blue-600 text-white'
+                  : 'text-zinc-600 hover:text-zinc-400 hover:bg-zinc-800'
+              }`}
+              aria-label="Search transactions"
+            >
+              <Search size={13} className="stroke-[2.5]" />
+            </button>
           </div>
+
+          {searchOpen && (
+            <div className="relative animate-fadeIn">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none stroke-[2.5]" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search by name or amount..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl pl-8 pr-8 py-2.5 text-sm text-zinc-100 font-bold focus:outline-none focus:border-blue-500 transition-colors placeholder:text-zinc-600"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => { setSearchQuery(""); setCurrentPage(1); searchInputRef.current?.focus(); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 touch-manipulation"
+                  aria-label="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          )}
+
+          {searchQuery.trim() && filteredExpenses.length === 0 && (
+            <div className="py-8 text-center text-zinc-600 text-[11px] font-black uppercase tracking-widest">
+              No results for "{searchQuery}"
+            </div>
+          )}
 
           {paginatedExpenses.map(exp => {
             const isSelected = selectedExpenseIds.includes(exp.id);
